@@ -1,110 +1,213 @@
-# 全球农机售后需求监控仪 (Global Agricultural Machinery Demand Monitor)
+# 🌍 Global Agricultural Machinery Lead Generation Platform
 
-实时监控全球农机配件需求信号的系统。
+An AI-powered B2B lead generation platform designed for agricultural machinery exporters.
 
-## 功能特性
+This project automatically discovers global procurement opportunities, extracts customer contact information, analyzes demand using AI, generates personalized sales emails, and supports automated outreach.
 
-- **Google Search 自动抓取**: 通过 Google Custom Search API 搜索论坛和公开市场需求
-- **AI 信号提取**: 自动过滤 Kubota 相关配件需求，识别地区、车型、配件类型
-- **紧急度判定**: 自动标记"急需采购"或"询问意向"
-- **加急囤货建议**: 检测到同型号配件连续 3+ 个需求时自动生成告警
-- **定时自动化**: 支持定时执行搜索任务
+---
 
-## API 使用
+# 项目简介
 
-### 手动触发 Google Search
+全球农机外贸 AI 获客平台。
 
-```bash
-POST /api/google-search
-Content-Type: application/json
+该项目旨在帮助农机及配件出口企业自动发现海外采购需求，采集客户信息，识别采购意向，并自动生成开发信，提高外贸开发效率。
 
-# 使用默认关键词
-{}
+---
 
-# 自定义关键词
-{
-  "keywords": ["Kubota L2201 parts", "tractor seat Thailand"]
-}
+# Features
+
+## 🔍 Demand Discovery
+
+- Google Custom Search API 搜索全球公开采购需求
+- 自动发现论坛、招标、采购网站
+- 支持自定义关键词搜索
+- 自动更新需求数据
+
+---
+
+## 🤖 AI Demand Analysis
+
+- AI 自动识别采购需求
+- 提取品牌（Kubota、Yanmar、John Deere 等）
+- 提取机型
+- 提取零件名称
+- 判断采购意向等级
+- 去除重复需求
+
+---
+
+## 👥 Customer Information Extraction
+
+自动提取客户信息：
+
+- Company Name
+- Website
+- Country
+- Contact Email
+- Product
+- Demand Description
+
+支持保存为 JSON。
+
+---
+
+## 📧 AI Email Generation
+
+根据客户需求自动生成英文开发信。
+
+支持：
+
+- 个性化内容
+- 产品推荐
+- 商务语气
+- 自动插入公司信息
+
+---
+
+## 📨 Email Outreach
+
+支持：
+
+- SMTP 邮件发送
+- 批量发送开发信
+- 邮件日志
+- 发送状态记录
+
+---
+
+## ⚙ Automation
+
+- 自动执行搜索任务
+- 自动更新需求数据库
+- 自动生成开发信
+- 自动发送邮件
+- 日志管理
+
+---
+
+# Project Structure
+
+```
+.
+├── demo/
+│   ├── demo.py
+│   ├── email_sender.py
+│   ├── website_email_scraper.py
+│   ├── server.py
+│   ├── update_emails.py
+│   ├── scraper_more.py
+│   └── ...
+│
+├── .cursor/
+├── README.md
+├── requirements.txt
+└── .gitignore
 ```
 
-### 手动提交数据
+---
 
-```bash
-POST /api/process-raw-data
-Content-Type: application/json
+# Demo
 
-# 单条数据
-{
-  "content": "URGENT! Looking for Kubota seat for L2201...",
-  "location": "Nigeria",
-  "source": "forum"
-}
+`demo/` 文件夹提供独立示例程序。
 
-# 多条数据（数组）
-[
-  { "content": "...", "location": "..." },
-  { "content": "...", "location": "..." }
-]
+包括：
+
+- Google Search
+- Website Scraper
+- Email Scraper
+- AI Demand Extraction
+- Email Generator
+- Bulk Email Sender
+
+这些 Demo 可以单独运行，也可以作为整个系统的组成部分。
+
+---
+
+# Workflow
+
+```
+Google Search
+
+↓
+
+Collect Procurement Information
+
+↓
+
+AI Demand Analysis
+
+↓
+
+Extract Customer Information
+
+↓
+
+Generate Sales Email
+
+↓
+
+Send Email
+
+↓
+
+Save Logs
 ```
 
-### Edge Function 自动搜索
+---
 
-```bash
-POST https://your-project.supabase.co/functions/v1/auto-search
-Authorization: Bearer YOUR_ANON_KEY
-Content-Type: application/json
+# Tech Stack
 
-{}
-```
+- Python
+- Flask
+- Google Custom Search API
+- OpenAI API
+- JSON
+- SMTP
+- Git
+- Cursor AI
 
-## 配置
+---
 
-### 环境变量
+# Application Scenarios
 
-```env
-GOOGLE_API_KEY=your_google_api_key
-GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id
-```
+适用于：
 
-### 定时任务配置
+- Agricultural Machinery
+- Tractor Parts
+- Construction Machinery
+- Heavy Equipment
+- Industrial Parts
+- B2B Export
 
-在 Supabase SQL Editor 中执行：
+---
 
-```sql
-SELECT cron.schedule(
-  'auto-search-hourly',
-  '0 * * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://your-project.supabase.co/functions/v1/auto-search',
-    headers := '{"Content-Type": "application/json"}'::jsonb
-  );
-  $$
-);
-```
+# Future Roadmap
 
-## 支持的关键词
+计划增加：
 
-**品牌**: Kubota, 久保田
+- CRM Integration
+- LinkedIn Lead Generation
+- WhatsApp Automation
+- Dashboard
+- PostgreSQL Database
+- Multi-language Email Generation
+- Customer Scoring
+- AI Sales Assistant
 
-**配件**: filter, seat, pump, engine, transmission, hydraulic, belt, bearing, gasket, valve, cylinder, tire, battery, radiator, clutch, brake, steering
-(中文: 滤芯, 座椅, 泵, 发动机, 变速箱, 液压, 轮胎, 电瓶)
+---
 
-**地区关键词**: Africa, Southeast Asia, South Asia, Middle East, Latin America, Europe, North America, East Asia
+# License
 
-**紧急关键词**:
-- 高需求: urgent, immediately, asap, 急需, 急购, 立即, broken, problem
-- 询问: asking, interested, quote, 询问, 询价, where to buy
+MIT License
 
-## 数据库结构
+---
 
-- `signals`: 存储提取的需求信号
-- `alerts`: 存储加急囤货建议
+# Author
 
-## 开发
+**Mona Wang**
 
-```bash
-npm run dev
-```
+Business Development | AI Automation | Agricultural Machinery Export
 
-访问 http://localhost:3000/setup 查看配置指南。
+GitHub:
+
+https://github.com/meokokawaii-droid
