@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leeway Parts — 需求信号 + B2B 监控</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f6f6f6;
+    --bg-card: #ffffff;
+    --border: #e5e5e5;
+    --text: #1a1a1a;
+    --text-secondary: #6b6b6b;
+    --text-tertiary: #999;
+    --accent: #2563eb;
+    --danger-bg: #fef2f2;
+    --danger-text: #dc2626;
+    --warning-bg: #fffbeb;
+    --warning-text: #d97706;
+    --success-bg: #f0fdf4;
+    --success-text: #16a34a;
+    --info-bg: #eff6ff;
+    --info-text: #2563eb;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg-secondary);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .stat-card .label { font-size: 12px; color: var(--text-secondary); }
+  .stat-card .value { font-size: 28px; font-weight: 600; margin-top: 2px; }
+  .stat-card .value.high { color: var(--danger-text); }
+  .stat-card .value.ok { color: var(--accent); }
+
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
+    align-items: center;
+  }
+  .filters select {
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 13px; background: var(--bg); color: var(--text); cursor: pointer;
+    min-width: 100px;
+  }
+  .filters select:focus { outline: none; border-color: var(--accent); }
+  .filter-count { font-size: 12px; color: var(--text-secondary); margin-left: 8px; }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid var(--border); }
+  .tab {
+    padding: 10px 20px; font-size: 14px; font-weight: 500;
+    cursor: pointer; border: none; background: none; color: var(--text-secondary);
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover { color: var(--text); }
+  .tab .count {
+    display: inline-block; background: var(--bg-secondary); border-radius: 10px;
+    padding: 0 8px; font-size: 12px; margin-left: 6px; font-weight: 400;
+    color: var(--text-secondary);
+  }
+  .tab.active .count { background: var(--info-bg); color: var(--accent); }
+
+  .cards { display: grid; gap: 12px; }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    transition: border-color 0.15s;
+    position: relative;
+  }
+  .card:hover { border-color: #c5c5c5; }
+  .card.contacted { opacity: 0.7; }
+  .card.contacted::after {
+    content: "已联系";
+    position: absolute; top: 12px; right: 16px;
+    font-size: 11px; color: var(--success-text); background: var(--success-bg);
+    padding: 2px 8px; border-radius: var(--radius);
+  }
+
+  .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; font-size: 11px; font-weight: 600;
+    padding: 2px 10px; border-radius: var(--radius); letter-spacing: 0.02em;
+  }
+  .badge.high { background: var(--danger-bg); color: var(--danger-text); }
+  .badge.medium { background: var(--warning-bg); color: var(--warning-text); }
+  .badge.low { background: var(--success-bg); color: var(--success-text); }
+
+  .part-name { font-weight: 600; font-size: 15px; }
+  .model { font-size: 12px; color: var(--text-secondary); }
+  .score {
+    margin-left: auto; font-size: 12px; color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+  .score strong { font-size: 16px; color: var(--text); }
+
+  .card-body { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+  .snippet {
+    background: var(--bg-secondary); padding: 8px 12px; border-radius: var(--radius);
+    font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+    margin-bottom: 8px; max-height: 48px; overflow: hidden;
+    position: relative;
+  }
+  .snippet::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 20px;
+    background: linear-gradient(transparent, var(--bg-secondary));
+  }
+
+  .card-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .tag {
+    font-size: 11px; padding: 2px 8px; border-radius: var(--radius);
+    background: var(--bg-secondary); color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .tag.country { background: var(--info-bg); color: var(--info-text); }
+  .tag.category { background: var(--bg-secondary); color: var(--text); font-weight: 500; }
+  .tag.contact { color: var(--text-secondary); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+
+  .draft-section {
+    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 6px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .draft-text {
+    flex: 1; font-size: 13px; color: var(--text); line-height: 1.6;
+    padding: 10px 12px; background: var(--info-bg); border-radius: var(--radius);
+    position: relative;
+  }
+  .draft-label { font-size: 11px; color: var(--info-text); font-weight: 500; margin-bottom: 4px; display: block; }
+  .copy-btn {
+    flex-shrink: 0; padding: 6px 14px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--accent); border-radius: var(--radius);
+    background: var(--bg); color: var(--accent); cursor: pointer;
+    white-space: nowrap; transition: background 0.15s, color 0.15s;
+  }
+  .copy-btn:hover { background: var(--accent); color: white; }
+  .copy-btn.copied { background: var(--success-bg); border-color: var(--success-text); color: var(--success-text); }
+
+  .empty { text-align: center; padding: 40px; color: var(--text-tertiary); font-size: 14px; }
+  .error { text-align: center; padding: 40px; color: var(--danger-text); font-size: 14px; }
+
+  .url-link { font-size: 11px; color: var(--text-tertiary); word-break: break-all; margin-top: 6px; }
+  .url-link a { color: var(--text-secondary); text-decoration: none; }
+  .url-link a:hover { text-decoration: underline; }
+
+  /* NEW v3.5 — Email outreach */
+  .quota-bar { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .quota-bar .label { color: var(--text-secondary); }
+  .quota-bar .progress { flex: 1; height: 6px; background: #ddd; border-radius: 3px; overflow: hidden; }
+  .quota-bar .progress-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.3s; }
+  .quota-bar .progress-fill.warning { background: var(--warning-text); }
+  .quota-bar .progress-fill.danger { background: var(--danger-text); }
+  .quota-bar .value { font-weight: 600; white-space: nowrap; }
+
+  .email-btn {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500;
+    padding: 4px 10px; border: 1px solid var(--accent); border-radius: var(--radius);
+    background: var(--bg); color: var(--accent); cursor: pointer; text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+  .email-btn:hover { background: var(--accent); color: white; }
+  .email-btn.sent { background: var(--success-bg); border-color: var(--success-text); color: var(--success-text); cursor: default; }
+
+  .preview-btn {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500;
+    padding: 4px 10px; border: 1px solid var(--text-tertiary); border-radius: var(--radius);
+    background: var(--bg); color: var(--text-secondary); cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .preview-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .preview-btn.loading { opacity: 0.6; pointer-events: none; }
+
+  .preview-section {
+    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 8px;
+    display: none;
+  }
+  .preview-section.open { display: block; }
+  .preview-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .preview-lang-tag {
+    font-size: 11px; font-weight: 600; color: var(--info-text);
+    background: var(--info-bg); padding: 2px 8px; border-radius: 4px;
+  }
+  .preview-subject {
+    font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px;
+    padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius);
+  }
+  .preview-body {
+    font-size: 13px; color: var(--text); line-height: 1.7;
+    padding: 12px 14px; background: #fafafa; border-radius: var(--radius);
+    border: 1px solid var(--border); white-space: pre-wrap; word-break: break-word;
+  }
+  .preview-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .preview-actions .copy-btn { padding: 5px 12px; font-size: 11px; }
+
+  .card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+
+  .export-btn {
+    padding: 6px 14px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg); color: var(--text-secondary); cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .export-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .send-btn {
+    padding: 6px 14px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--danger-text); border-radius: var(--radius);
+    background: var(--danger-text); color: white; cursor: pointer;
+    transition: opacity 0.15s; white-space: nowrap;
+  }
+  .send-btn:hover { opacity: 0.85; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .send-status {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; margin-left: 8px;
+  }
+  .send-status.success { color: var(--success-text); }
+  .send-status.error { color: var(--danger-text); }
+
+  .send-progress {
+    background: var(--bg-secondary); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 14px; margin: 8px 0; display: none;
+  }
+  .send-progress .bar { height: 4px; background: #ddd; border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .send-progress .bar-fill { height: 100%; background: var(--accent); transition: width 0.2s; border-radius: 2px; }
+  .send-progress .text { font-size: 12px; color: var(--text-secondary); }
+
+  .action-bar { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<h1>Leeway Parts — 需求信号 + B2B 监控</h1>
+<div class="subtitle" id="timestamp">数据加载中...</div>
+
+<div class="tabs" style="margin-bottom:16px">
+  <button class="tab active" data-pipeline="signals" onclick="switchPipeline('signals')">需求信号<span class="count" id="count-signals">0</span></button>
+  <button class="tab" data-pipeline="b2b" onclick="switchPipeline('b2b')">B2B 商家<span class="count" id="count-b2b">0</span></button>
+</div>
+
+<div id="signals-panel">
+<div class="quota-bar" id="quota-bar-signals" style="display:none">
+  <span class="label">邮件配额</span>
+  <div class="progress"><div class="progress-fill" id="quota-fill-signals"></div></div>
+  <span class="value" id="quota-text-signals">0/30</span>
+</div>
+<div class="action-bar" id="action-bar-signals">
+  <button class="send-btn" id="send-all-signals" onclick="sendAllEmails('signal')" disabled>发送全部</button>
+  <button class="export-btn" onclick="exportYAMMCsv('signals')">导出 YAMM CSV</button>
+  <span class="send-status" id="status-signals"></span>
+</div>
+<div class="send-progress" id="progress-signals">
+  <span class="text" id="progress-text-signals">准备发送...</span>
+  <div class="bar"><div class="bar-fill" id="progress-bar-signals"></div></div>
+</div>
+</div>
+<div class="stats">
+  <div class="stat-card"><div class="label">HIGH 紧急</div><div class="value high" id="stat-high">--</div></div>
+  <div class="stat-card"><div class="label">MEDIUM</div><div class="value" id="stat-med">--</div></div>
+  <div class="stat-card"><div class="label">LOW</div><div class="value ok" id="stat-low">--</div></div>
+</div>
+
+<div class="filters">
+  <select id="filter-urgency"><option value="all">全部紧急度</option><option value="high">HIGH</option><option value="medium">MEDIUM</option><option value="low">LOW</option></select>
+  <select id="filter-category"><option value="all">全部分类</option></select>
+  <select id="filter-tag"><option value="all">全部标签</option></select>
+  <select id="filter-country"><option value="all">全部分国家</option></select>
+  <span class="filter-count" id="filter-count">共 0 条</span>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="pending" onclick="switchTab('pending')">待联系<span class="count" id="count-pending">0</span></button>
+  <button class="tab" data-tab="contacted" onclick="switchTab('contacted')">已联系<span class="count" id="count-contacted">0</span></button>
+</div>
+
+<div class="cards" id="cards-container"></div>
+</div>
+
+<div id="b2b-panel" style="display:none">
+<div class="quota-bar" id="quota-bar-b2b" style="display:none">
+  <span class="label">邮件配额</span>
+  <div class="progress"><div class="progress-fill" id="quota-fill-b2b"></div></div>
+  <span class="value" id="quota-text-b2b">0/30</span>
+</div>
+<div class="action-bar" id="action-bar-b2b">
+  <button class="send-btn" id="send-all-b2b" onclick="sendAllEmails('b2b')" disabled>发送全部</button>
+  <button class="export-btn" onclick="exportYAMMCsv('b2b')">导出 YAMM CSV</button>
+  <button class="export-btn" id="scrape-btn" onclick="scrapeEmails()" title="从公司网站自动爬取邮箱">爬取邮箱</button>
+  <button class="export-btn" id="refresh-b2b-btn" onclick="refreshB2b()" style="background:var(--accent);color:white;border-color:var(--accent);font-weight:600" title="重新搜索并抓取B2B商家，自动爬取邮箱">刷新B2B商家</button>
+  <span class="send-status" id="status-b2b"></span>
+</div>
+<div class="send-progress" id="progress-b2b">
+  <span class="text" id="progress-text-b2b">准备发送...</span>
+  <div class="bar"><div class="bar-fill" id="progress-bar-b2b"></div></div>
+</div>
+<div class="send-progress" id="refresh-progress-b2b" style="display:none">
+  <span class="text" id="refresh-text-b2b">准备刷新...</span>
+  <div class="bar"><div class="bar-fill" id="refresh-bar-b2b" style="width:0%"></div></div>
+</div>
+
+<div class="stats">
+  <div class="stat-card"><div class="label">全部商家</div><div class="value" id="b2b-stat-total">--</div></div>
+  <div class="stat-card"><div class="label">高置信 (&ge;70)</div><div class="value high" id="b2b-stat-high">--</div></div>
+  <div class="stat-card"><div class="label">中等 (40-69)</div><div class="value" id="b2b-stat-mid">--</div></div>
+  <div class="stat-card"><div class="label">低 (&lt;40)</div><div class="value ok" id="b2b-stat-low">--</div></div>
+</div>
+
+<div class="filters">
+  <select id="b2b-filter-type"><option value="all">全部类型</option></select>
+  <select id="b2b-filter-country"><option value="all">全部分国家</option></select>
+  <select id="b2b-filter-conf"><option value="all">全部置信度</option><option value="high">&ge;70</option><option value="mid">40-69</option><option value="low">&lt;40</option></select>
+  <label style="font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;user-select:none">
+    <input type="checkbox" id="b2b-filter-email" onchange="renderB2b()"> 仅看有邮箱
+  </label>
+  <span class="filter-count" id="b2b-filter-count">共 0 条</span>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="pending" onclick="switchTabB2b('pending')">待联系<span class="count" id="b2b-count-pending">0</span></button>
+  <button class="tab" data-tab="contacted" onclick="switchTabB2b('contacted')">已联系<span class="count" id="b2b-count-contacted">0</span></button>
+</div>
+
+<div class="cards" id="b2b-cards-container"></div>
+</div>
+
+<script>
+var SERVER = 'http://localhost:5010';
+var serverOnline = false;
+
+window._EMAIL_STATS = {"sent_today": 0, "daily_limit": 30, "remaining": 30};
+window._EMBEDDED_DATA = {"run_timestamp": "2026-07-03T03:59:02.978344+00:00", "total_queries": 42, "total_results": 312, "total_signals": 178, "matched_signals": 16, "signals": [{"country": "Philippines", "machine_model": "Kubota L225D", "part_type": "hydraulic pump", "buyer_type": "individual_farmer", "poster_username": "Pome Charova", "urgency": "medium", "urgency_score": 50, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.facebook.com/groups/281088684155408/posts/1332813308982935/", "snippet": "Pome Charova ▻ Kubota tractor seller and Kubota tractor parts. 1y · Public · Looking for a hydraulic pump for kubota l225D · Kiran Patel and Prashanta Prashanta.", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Hydraulic Parts > Hydraulic Pump", "matched_brand": "Kubota", "match_reason": "matched keyword: hydraulic pump", "outreach_draft": "Hi there! We carry the hydraulic pump for Kubota L225D and can ship worldwide. Even if you're ordering just a few parts, we’re happy to help. Let us know your needs and we’ll send over product details or a quote. If you need guidance on installation, feel free to ask. Looking forward to supporting your tractor repair!", "priority_score": 55, "tags": ["液压件", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": "Philippines", "machine_model": "Kubota L3608", "part_type": "Limit chain TC422-", "buyer_type": "unknown", "poster_username": "Francisco Jose Martinez", "urgency": "low", "urgency_score": 20, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": "Kubota tractor seller and Kubota tractor parts", "website": null, "source_url": "https://www.facebook.com/groups/179801353842371/posts/1500930485062778/", "snippet": "Looking for Komatsu 6D102 T/C supplier for original parts. Thank ... Francisco Jose Martinez ▻ Kubota tractor seller and Kubota tractor parts. 1y · Public ...", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Harvester Accessories", "matched_brand": "Kubota/Yanmar", "match_reason": "matched keyword: chain", "outreach_draft": "We carry the Limit chain TC422 for Kubota tractors, including the L3608 model. Let us know if you need help with your order—whether it's a small or large quantity, we're here to support you. We offer fast shipping and no minimum order requirements. Would you like a catalog or product details?", "priority_score": 40, "tags": ["久保田", "洋马"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": "Ireland", "machine_model": "Yanmar 6kva diesel generator", "part_type": "alternator parts", "buyer_type": "unknown", "poster_username": null, "urgency": "low", "urgency_score": 20, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": "Originalpart4you", "website": null, "source_url": "https://www.facebook.com/groups/irishconstructionjobs/posts/2456976511492543/", "snippet": "Originalpart4you offers you genuine Yanmar marine engine parts including overhaul kits, cylinder heads, pistons, filters, gasket sets, water pumps, alternators, ...", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Engine Parts", "matched_brand": "Kubota/Yanmar", "match_reason": "matched keyword: alternator", "outreach_draft": "We carry alternator parts compatible with Yanmar 6kva diesel generators. Could you confirm the exact model of your machine? We can ship quickly and accept small orders. Let us know if you'd like a catalog or product details.", "priority_score": 40, "tags": ["久保田", "洋马"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": null, "machine_model": "Yanmar 3TN75", "part_type": "hydraulic pump gear", "buyer_type": "individual_farmer", "poster_username": "Eric Durmon", "urgency": "medium", "urgency_score": 50, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.facebook.com/groups/905828935258305/posts/1023771456797385/", "snippet": "Yanmar 3TN75 tractor injection pump removal tips needed. Eric Durmon ... Replacing hydraulic filters on Kubota L4310 tractor. Peter Tedeschi ▻ Kubota ...", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Transmission & Drivetrain > Gears", "matched_brand": "Kubota", "match_reason": "matched keyword: gear", "outreach_draft": "Hi there, I'm glad to hear you're looking for a hydraulic pump gear for your Yanmar 3TN75. We do have this part available and can ship worldwide. Even if you're ordering just a few pieces, we’d be happy to help. Let me know your exact model and I can provide more details or send you a catalog. Feel free to reach out with any questions!", "priority_score": 55, "tags": ["液压件", "齿轮", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": "Europe", "machine_model": null, "part_type": "Hydraulic Pumps", "buyer_type": "unknown", "poster_username": null, "urgency": "low", "urgency_score": 20, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://yparts.yanmar-compact-equipment-europe.com/hydraulic-parts/hydraulic-pumps.html", "snippet": "Yanmar Genuine Parts. The safest way to high performance. Currently ... Service for assistance. CLICK HERE TO LEARN MORE ABOUT THE LATEST ...", "post_date": "Jun 4, 2026", "contact_method": "Direct message / Comment", "has_product": true, "matched_category": "Hydraulic Parts > Hydraulic Pump", "matched_brand": "Kubota", "match_reason": "matched keyword: hydraulic pump", "outreach_draft": "We carry hydraulic pumps that may fit your needs. Could you share the machine model or specifications so I can check compatibility? We offer fast shipping and no minimum order. Whether you're a dealer, repair shop, or farmer, we’re here to help. Let me know how I can assist—would you like a catalog or product details?", "priority_score": 40, "tags": ["液压件", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": "Poland", "machine_model": "Yanmar EF453T, EF493T, Cub Cadet EX450, Kubota T1150-36403", "part_type": "Hydraulic pump", "buyer_type": "unknown", "poster_username": null, "urgency": "low", "urgency_score": 20, "purchase_intent": "low", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://traktor.com.pl/en/577-hydraulic-pumps?srsltid=AfmBOopb5DszAV6ce8kxyTfPrudbxNDZ1r2iZsOua-X6Bo9awZF6DStL", "snippet": "Hydraulic pump / 12T / Yanmar EF453T / EF493T / Cub Cadet EX450 /... zł999.00. Available. Hydraulic pump, Kubota, T1150-36403,. Hydraulic ...", "post_date": "Jun 20, 2026", "contact_method": "Direct message / Comment", "has_product": true, "matched_category": "Hydraulic Parts > Hydraulic Pump", "matched_brand": "Kubota", "match_reason": "matched keyword: hydraulic pump", "outreach_draft": "We carry the hydraulic pump for your machine model. Could you confirm the exact model you need? We offer fast shipping and no minimum order. Whether you're a dealer, repair shop, or farmer, we’re here to help. Let us know if you’d like a catalog or product details. Looking forward to supporting your needs.", "priority_score": 40, "tags": ["液压件", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": "Bangladesh", "machine_model": null, "part_type": "agricultural gearboxes", "buyer_type": "unknown", "poster_username": null, "urgency": "low", "urgency_score": 20, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": "Chadha Engineers", "website": null, "source_url": "https://www.facebook.com/100077906385434/posts/-premium-agricultural-gearboxes-by-chadha-engineerslooking-for-durable-and-high-/1038960785377458/", "snippet": "󰟬176 6399 7490 Our gearbox is designed for agricultural machinery and is widely used in tractors, harvesters, tillers and other equipment, providing strong ...", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Transmission & Drivetrain > Gears", "matched_brand": "Kubota", "match_reason": "matched keyword: gear", "outreach_draft": "We carry agricultural gearboxes in our Transmission & Drivetrain category. Could you share the machine model you're working with? We can confirm compatibility and provide details. We support small orders and offer fast shipping worldwide. Let us know how we can help—would you like a catalog or product info?", "priority_score": 40, "tags": ["齿轮", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": "Japan", "machine_model": "YANMAR YXH-250", "part_type": "BEARING, ROTOR ASSY, TURBINE", "buyer_type": "unknown", "poster_username": null, "urgency": "low", "urgency_score": 20, "purchase_intent": "low", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.instagram.com/reel/DaPkipTCaOB/", "snippet": "MARINE SPARE PARTS IN TRANSIT MADE IN KOREA PART NO: 32315U BEARING ... YANMAR GENUINE PARTS XNH161310 ROTOR ASSY, TURBINE MADE IN JAPAN SAMUDRA DIESEL ...", "post_date": null, "contact_method": "Direct message / Comment", "has_product": true, "matched_category": "Transmission & Drivetrain > Axle Parts", "matched_brand": "Kubota", "match_reason": "matched keyword: bearing", "outreach_draft": "We carry the BEARING, ROTOR ASSY, TURBINE for YANMAR YXH-250. Let us know how we can assist you—whether you need a quick quote, product details, or help confirming compatibility. We support small orders and offer fast shipping worldwide. Feel free to reach out with any questions!", "priority_score": 40, "tags": ["底盘传动", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": "South Africa", "machine_model": null, "part_type": "tractor spare parts, combine parts, engine parts", "buyer_type": "unknown", "poster_username": "landboupart", "urgency": "low", "urgency_score": 20, "purchase_intent": "low", "contact_name": null, "contact_email": null, "company_name": "Landboupart", "website": null, "source_url": "https://www.facebook.com/landboupart/posts/looking-for-quality-aftermarket-replacement-parts-for-tractors-combines-engines-/1013507068074300/", "snippet": "Selling tractor spare parts is what we do with pride in South Africa. Specializing in Massey Ferguson, Ford, Fiat and Many more. No photo description available.", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Harvester Accessories", "matched_brand": "Kubota/Yanmar", "match_reason": "matched keyword: combine part", "outreach_draft": "We carry Harvester Accessories that may fit your needs. Could you share the specific machine model you're working with? We offer fast shipping, no minimum order, and parts compatible with various brands. Let us know how we can help—whether you need a quote, product details, or guidance on installation. Looking forward to supporting your operation.", "priority_score": 40, "tags": ["发动机", "久保田", "洋马"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": null, "machine_model": "Yanmar 6KFL", "part_type": "fuel injection pump gear", "buyer_type": "individual_farmer", "poster_username": null, "urgency": "medium", "urgency_score": 50, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.facebook.com/groups/6556257213/posts/10165905162112214/", "snippet": "Timing the fuel injection pump gear on a Yanmar 6KFL engine.\"⚓️ #EngineRepair #MechanicLife #MechanicDaily #engineCadet #MaritimeLife.", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Transmission & Drivetrain > Gears", "matched_brand": "Kubota", "match_reason": "matched keyword: gear", "outreach_draft": "Hi there, I'm glad to hear you're looking for a fuel injection pump gear for your Yanmar 6KFL. We carry this part and can help you get it quickly. Even if you're ordering just a few, we’re happy to assist. Let me know your needs and I can send over more details or a quote. Looking forward to helping you out!", "priority_score": 55, "tags": ["液压件", "齿轮", "发动机", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": null, "machine_model": "Kubota hay mower", "part_type": "hydraulic cylinder", "buyer_type": "individual_farmer", "poster_username": "farmergmb", "urgency": "high", "urgency_score": 85, "purchase_intent": "high", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.tiktok.com/@farmergmb/video/7652190641849404703", "snippet": "Recent issues have arisen concerning hydraulic cylinders on Kubota hay mowers, where the mounting bolt has been prone to breaking. Understanding the ...", "post_date": null, "contact_method": "Direct message / Comment", "has_product": true, "matched_category": "Hydraulic Parts > Hydraulic Cylinder", "matched_brand": "Kubota", "match_reason": "matched keyword: hydraulic cylinder", "outreach_draft": "Hi there, I hope you're doing well! We carry the hydraulic cylinder you need for your Kubota hay mower and can ship worldwide. Even if you're an individual farmer, we’re happy to help with small orders. Let me know your machine model, and I’ll confirm compatibility. Would you like a catalog or product details? Looking forward to helping you out!", "priority_score": 72, "tags": ["液压件", "急单", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": null, "machine_model": null, "part_type": "hydraulic control valve", "buyer_type": "repair_shop", "poster_username": null, "urgency": "medium", "urgency_score": 50, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.instagram.com/reel/DZ-7wG_y8bQ/", "snippet": "Regular inspection and maintenance of the oil pump can help prevent engine damage and improve the tractor's efficiency. ... John Deere, Toro, Kubota, Bobcat... it ...", "post_date": null, "contact_method": "Direct message / Comment", "has_product": true, "matched_category": "Hydraulic Parts > Control Valve", "matched_brand": "Kubota", "match_reason": "matched keyword: control valve", "outreach_draft": "We carry the hydraulic control valve you're looking for and can ship it quickly. If you let us know the specific model of your tractor, we can confirm compatibility and provide details. We support repair shops with no minimum order and fast shipping. Need a catalog or quote? Just let us know!", "priority_score": 55, "tags": ["液压件", "维修厂", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": "Brazil", "machine_model": "5010-20 or 6030", "part_type": "final drives", "buyer_type": "unknown", "poster_username": "Damian Wolfe", "urgency": "medium", "urgency_score": 50, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": "Scholten's Equipment", "website": null, "source_url": "https://www.facebook.com/groups/414081292044387/posts/26854376067588216/", "snippet": "Damian Wolfe ▻ Pulling Tractor Parts For Sale. 2y · Public · Anyone have any 5010-20 or 6030 parts tractors in need of final drives preferably a donor tractor.", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Transmission & Drivetrain > Axle Parts", "matched_brand": "Kubota", "match_reason": "matched keyword: final drive", "outreach_draft": "We carry final drives for Kubota 5010-20 and 6030 models. Let us know your exact machine model and we can confirm compatibility. We ship worldwide and accept small orders. Would you like a catalog or product details?", "priority_score": 55, "tags": ["久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": null, "machine_model": "Valtra 850", "part_type": "toma fuerza (power take-off)", "buyer_type": "individual_farmer", "poster_username": null, "urgency": "medium", "urgency_score": 50, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.tiktok.com/discover/c%C3%B3mo-desarmar-el-toma-fuerza-de-un-tractor-valtra-850", "snippet": "desmontagem trator Valtra BH 180, peças trator Valtra, manutenção equipamentos agrícolas, compra de peças agrícolas, qualidade peças trator, agro Brasil ...", "post_date": "4 days ago", "contact_method": "Direct message / Comment", "has_product": true, "matched_category": "Transmission & Drivetrain > PTO Components", "matched_brand": "Kubota", "match_reason": "matched keyword: power take-off", "outreach_draft": "Hi there, I'm a B2B sales rep with Leeway Parts, and we carry the power take-off (PTO) component you're looking for. We ship worldwide and can help even with small orders. If you need installation guidance, just let me know. Could you confirm the exact model of your Valtra 850? I’d be happy to send you more details or a quote. Let me know how I can assist!", "priority_score": 55, "tags": ["久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": null, "machine_model": "Kubota", "part_type": "lift arm", "buyer_type": "individual_farmer", "poster_username": null, "urgency": "medium", "urgency_score": 50, "purchase_intent": "medium", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.facebook.com/groups/636337120536669/posts/2364650091038688/", "snippet": "Do anybody know where you can get used tractor parts someone told me they was a place in Aiken but not sure. Looking for a lift arm for a Kubota tractor · No ...", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Linkage & Hitch Parts", "matched_brand": "Kubota", "match_reason": "matched keyword: lift arm", "outreach_draft": "Hi there, I'm sorry we don't have specific info on your location, but I wanted to let you know we carry linkage & hitch parts for Kubota tractors. We can help with small orders and offer guidance on installation if needed. Could you share the model of your tractor? That way I can confirm compatibility and send over more details or a catalog. Let me know how I can assist!", "priority_score": 55, "tags": ["久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"country": null, "machine_model": "Kubota L275", "part_type": "front end bevel gear case", "buyer_type": "individual_farmer", "poster_username": null, "urgency": "high", "urgency_score": 80, "purchase_intent": "high", "contact_name": null, "contact_email": null, "company_name": null, "website": null, "source_url": "https://www.facebook.com/groups/1079279123377461/posts/anyone/1689866308985403/", "snippet": "Anyone have an L275 for parts or whole tractor? Need front end bevel gear case. And yeah, will no longer use chains on front tires!", "post_date": null, "contact_method": "Facebook Messenger / Comment", "has_product": true, "matched_category": "Transmission & Drivetrain > Gears", "matched_brand": "Kubota", "match_reason": "matched keyword: gear", "outreach_draft": "Hi there, I'm sorry to hear you're having trouble finding the front end bevel gear case for your Kubota L275. We do carry this part and can help you get it quickly. Even if you're ordering just a few pieces, we’re happy to assist. Would you like me to send you more details or a quote? Let me know your exact model and I’ll check availability for you.", "priority_score": 70, "tags": ["齿轮", "急单", "久保田"], "contacted": false, "contacted_at": null, "status": "new", "notes": null}]};
+window._EMBEDDED_B2B_DATA = {"run_timestamp": "2026-07-03T03:59:02.978344+00:00", "total_b2b_queries": 18, "total_b2b_results": 120, "total_companies": 94, "matched_product": 3, "companies": [{"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": null, "confidence": 20, "source_url": "https://faq-agriculture.kubota.co.jp/%E9%83%A8%E5%93%81%E3%82%92%E3%82%AF%E3%83%9C%E3%82%BF%E3%81%8B%E3%82%89%E7%9B%B4%E6%8E%A5%E8%B3%BC%E5%85%A5%E3%81%A7%E3%81%8D%E3%81%BE%E3%81%99%E3%81%8B%EF%BC%9F%EF%BC%88%E9%83%A8%E5%93%81%E3%81%AE%E9%80%9A%E4%BF%A1%E8%B2%A9%E5%A3%B2%EF%BC%89-67adc98f2b537d27a00b0682", "snippet": "... クボタには部品の通信販売システムはございません。 部品のご購入は、クボタ農機販売店もしくはクボタ農機取扱いのJAへご注文ください。（お近くの販売店検索は こちら ）.", "post_date": null, "part_type": "", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": null, "confidence": 30, "source_url": "https://agriculture.kubota.co.jp/after-support/parts-distribution/", "snippet": "クボタでは、西日本部品センターおよび東日本部品センターをはじめとした4拠点で、部品供給ネットワークを構築。 お客さまのご要望に迅速にお応えし、安心して末永く、 ...", "post_date": null, "part_type": "", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": null, "confidence": 30, "source_url": "https://metoree.com/companies/2426/distributors/", "snippet": "2026年7月時点でのクボタの代理店の注目ランキングは、1位: 渡辺パイプ、 2位: ダイドー、 3位: 杉本商事となっています。 エリアからクボタの代理店を探す. 代理店の支店 ...", "post_date": null, "part_type": "", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": null, "confidence": 30, "source_url": "https://agriculture.kubota.co.jp/purchase-support/dealer/", "snippet": "農業機械のご購入やアフターサービスのご相談は、クボタのお店にご相談ください。 クボタのお店を探す. 住所や現在地からお近くのお店をお探しいただけます。", "post_date": null, "part_type": "", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "サンセイ株式会社", "business_type": "distributor", "website": "https://www.sanseicom.jp", "contact_email": "store@sanseicom.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, tractor parts, rotary parts", "confidence": 75, "source_url": "https://www.sanseicom.jp/product-list/261?srsltid=AfmBOoqvuPt6Fwv5ufs6L6jpcO1yGf83G_-1aRGz6iMHftHfWb3Bqxfq", "snippet": "クボタ 純正 トラクター用 ロータリー部品 930円～2,150円(税込) 部品は発送まで1～2週間(最大1ヶ月)ほどかかる場合がございます。 京都府綾部市にて営業しております。", "post_date": null, "part_type": "agricultural machinery parts, tractor parts, rotary parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T08:40:06.647400+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 30, "source_url": "https://jp.locator.kubota.com/", "snippet": "現在地から探す. YOUR LOCATION. 販売会社・パートナー店一覧はこちら · 販売会社・パートナー店一覧はこちら. To navigate the map with touch gestures double-tap and ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 30, "source_url": "https://www.yanmar.com/jp/support/afterservice/repairparts/agri/", "snippet": "補修部品が必要なのですが、どこで買えますか？ お近くのヤンマー販売店、或いは農業機械取扱のあるJAにてお買い求めいただけます。 部品の価格 ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "ノウキナビ", "business_type": "trading_company", "website": "https://www.noukinavi.com", "contact_email": "noukinavi@noukinavi.com", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.noukinavi.com/blog/?p=6470", "snippet": "部品注文フォームもしくはLINEのノウキナビ純正部品パーツ取り寄せサービスより部品取り寄せ依頼を行っていただく · メールもしくはLINEでのやり取りで ...", "post_date": "Jul 1, 2019", "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T08:40:05.921521+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": "サンセイイーストア", "business_type": "distributor", "website": "https://www.sanseicom.jp", "contact_email": "store@sanseicom.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, farm equipment parts", "confidence": 85, "source_url": "https://www.sanseicom.jp/product-list/508?srsltid=AfmBOorsMtqE7L9CEKkzC1UQrPZwEh-9WdYMiOtyp6k9rwgC6mLIgTTu", "snippet": "ヤンマー機械用 の商品一覧ページです。農業機械用部品・農機具部品の老舗通販サイト『サンセイイーストア』は、農機部品を幅広く安価に、全国へお届けしています。", "post_date": null, "part_type": "agricultural machinery parts, farm equipment parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "みなべ町", "business_type": "distributor", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, farm equipment, fertilizers, pesticides, facility materials, processing and shipping materials", "confidence": 75, "source_url": "https://www.agriz.net/c/gr415/gr424/ynm-10519855510?srsltid=AfmBOor5_4GvepXpm3sX2nrwRRqjw6MM3nSe8lUjdci1mj9HNdBy50lt", "snippet": "現在みなべ町で実店舗も運営しており、こちらでは農機具販売だけでなく修理やメンテナンス、肥料農薬、施設資材、加工出荷資材など、生産から加工・出荷に至るまでトータル ...", "post_date": null, "part_type": "agricultural machinery parts, farm equipment, fertilizers, pesticides, facility materials, processing and shipping materials", "has_product": true, "matched_category": "Other > Fasteners & Hardware", "matched_brand": "Universal", "match_reason": "matched keyword: pin", "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": null, "confidence": 30, "source_url": "https://xn--pckua2a7gp15o89zb.com/%E8%BE%B2%E6%A5%AD%E6%A9%9F%E6%A2%B0-%E8%B2%A9%E5%A3%B2%E3%81%AE%E4%BB%95%E4%BA%8B", "snippet": "農業機械 販売の求人は15445件あります。【顧客満足度No.1】求人ボックスは毎日更新！販売スタッフ・レジの求人やパートでの仕事・転職・採用情報もまとめて検索。", "post_date": null, "part_type": "", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 30, "source_url": "https://townwork.net/job_search/kw/%E8%BE%B2%E6%A5%AD%E6%A9%9F%E6%A2%B0%E8%BC%B8%E5%87%BA/", "snippet": "【農機具を海外へ！！】未経験者歓迎！農機具を点検してコンテナに詰込、海外へ送り出す仕事！事業拡大のため、スタッフ増員計画中！整備経験がある方も歓迎！", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery repair and maintenance", "confidence": 30, "source_url": "https://doda.jp/DodaFront/View/JobSearchDetail/j_jid__3014894576/", "snippet": "トラクター等の農業機械の組み立て・点検・整備業務をご担当いただきます。営業所の工場内または、お客様のお宅に伺い、農業機械の修理や点検を行っていただきます。", "post_date": null, "part_type": "agricultural machinery repair and maintenance", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "日本ニューホランド株式会社", "business_type": "distributor", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "農業機械部品", "confidence": 75, "source_url": "https://www.agri-navi.com/jobdetail/42067", "snippet": "世界から輸入した高性能農業機械を全国へ販売！農業を支える農業機械の部品営業スタッフを経験者募集☆豊富な研修制度で専門知識を身に着けられる環境です。【求人番号:42067】.", "post_date": null, "part_type": "農業機械部品", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "日本ニューホランド株式会社", "business_type": "importer", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.jobs-go.jp/jobs/detail/12149", "snippet": "農業機械の輸入・販売会社での営業職 日本ニューホランド株式会社 長野営業所の求人情報 /長野県小海町. 未経験者活躍中！年間休日122日◎土日祝休み♪完全週休2日制！", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "株式会社ノヴァセル", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://recruit-novacell.com/recruits/15641238?referencenumber=15641238", "snippet": "募集要項 ; 農業機械のルート営業 · 正社員 · 変形労働時間制 · ＜労働時間区分＞ 1年単位の変形労働時間制週平均労働時間：36時間50分対象期間の総所定労働時間：1944時間休憩時間 ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "大阪トラクター株式会社", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "construction machinery parts, truck parts, industrial machinery parts", "confidence": 75, "source_url": "https://www.jetro.go.jp/hrportal/company/detail/100428.html", "snippet": "私たちは、1969年創業の貿易商社です。主に建設機械・トラック・産業機械の部品、工場の設備機器を取り扱っております。アジアを中心に販路を拡大し、現在は10以上の ...", "post_date": null, "part_type": "construction machinery parts, truck parts, industrial machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "国際農機株式会社", "business_type": "importer", "website": "https://www.kokusainohki.com/", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "large agricultural machinery, general parts", "confidence": 85, "source_url": "https://www.kokusainohki.com/", "snippet": "国際農機は、大型農業機械＆5000種類以上の汎用部品の輸入と卸売りを行っております。世界中から選りすぐった製品で、日本の皆様のニーズにぴったりマッチするサービスをお ...", "post_date": null, "part_type": "large agricultural machinery, general parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "西日本貿易株式会社", "business_type": "trading_company", "website": "https://www.wjtc.co.jp/", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.wjtc.co.jp/", "snippet": "中国専業の総合商社、西日本貿易株式会社。約50年にわたる中国貿易専門実績で蓄積した経験で、日本企業・中国企業を繋げます。さらに台湾市場の開拓及び日中貿易に関連 ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "極東貿易株式会社", "business_type": "trading_company", "website": "https://www.kbk.co.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "mechanical parts, screws, springs", "confidence": 75, "source_url": "https://www.kbk.co.jp/ja", "snippet": "機械部品部門. KBKグループは、世界中のお客様に向けて環境に十分配慮したねじ・ばねといった製品を確かなサプライチェーンを活用し安全・安心とともに提供します。", "post_date": null, "part_type": "mechanical parts, screws, springs", "has_product": true, "matched_category": "Other > Fasteners & Hardware", "matched_brand": "Universal", "match_reason": "matched keyword: spring", "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "巴商会", "business_type": "trading_company", "website": "https://www.tomoe-ap.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "automotive parts, heavy machinery parts, agricultural machinery parts", "confidence": 85, "source_url": "https://www.tomoe-ap.jp/parts_import.php", "snippet": "あらゆる日本製パーツの輸出貿易業者様のニーズに迅速に対応. 長年にわたり、巴商会は国内はもとより、海外においても確かなネットワークを構築してきました。", "post_date": null, "part_type": "automotive parts, heavy machinery parts, agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "大阪トラクター株式会社", "business_type": "trading_company", "website": "https://www.osaka-tractor.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "industrial machinery and equipment, construction machinery parts, truck parts", "confidence": 75, "source_url": "https://www.osaka-tractor.jp/osakatractor_jp/company_j/", "snippet": "大阪トラクターは、長年にわたり産業機械・設備機器、建機部品・トラック部品の輸出専門商社として、国内外のお取引様のご支援のもと発展を続けてまいりました。", "post_date": null, "part_type": "industrial machinery and equipment, construction machinery parts, truck parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "三洋貿易株式会社", "business_type": "trading_company", "website": "https://www.sanyo-trading.co.jp/", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "various raw materials and machinery equipment", "confidence": 75, "source_url": "https://www.sanyo-trading.co.jp/", "snippet": "三洋貿易は、1947年の創業以来、堅実と進取の精神のもと、高付加価値の各種原材料や機械機器などの輸入販売を中心に、80年にわたり国内外で産業の発展と人々の生活向上に ...", "post_date": null, "part_type": "various raw materials and machinery equipment", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "大和精工株式会社", "business_type": "wholesaler", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "tractor parts, rotary parts, combine harvester binding machines, automotive engine parts, transmission parts", "confidence": 75, "source_url": "https://baseconnect.in/companies/keyword/2099b392-b009-4f7c-814b-a3a764c2f5d2?page=3", "snippet": "大和精工株式会社 ... トラクターのロータリーやコンバイン用結束機、自動車のエンジン部品ならびにトランスミッション部品などの農業機械および自動車部品を製造販売する。", "post_date": null, "part_type": "tractor parts, rotary parts, combine harvester binding machines, automotive engine parts, transmission parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "株式会社十辰製作所", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural equipment parts", "confidence": 75, "source_url": "https://salesnow.jp/db/business-details/agricultural-equipment-parts-manufacturing-business", "snippet": "農機具部品製造事業の会社一覧 · 株式会社十辰製作所 · 株式会社エース・システム · 株式会社大勢シェル · 新栄工業株式会社 · 関東農機株式会社 · 有限会社石原溶接 · 株式会社 ...", "post_date": null, "part_type": "agricultural equipment parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "KRAMP. クランプ社", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, agricultural parts", "confidence": 75, "source_url": "https://www.agridirect.jp/partslist/", "snippet": "KRAMP. クランプ社（オランダ）は農業分野に特化したパーツサプライヤーになります。約500,000以上のアイテム数があり、きっと皆さまのお探しの商品が見つかります。", "post_date": null, "part_type": "agricultural machinery parts, agricultural parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "アグリフォレストマシーン", "business_type": "importer", "website": "https://agfm.jp/", "contact_email": "info@agfm.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery, forestry machinery, work machines", "confidence": 75, "source_url": "https://agfm.jp/", "snippet": "アグリフォレストマシーンは農業機械、林業機械、作業機を世界中から取り寄せています。最新機械と革新的なアイディアを日本の農家に正規輸入する、輸入コンサルタント ...", "post_date": null, "part_type": "agricultural machinery, forestry machinery, work machines", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T08:40:07.573994+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": "アースマシン", "business_type": "trading_company", "website": "https://www.earth-machine.jp/trade/", "contact_email": "info@earth-machine.co.jp", "phone": null, "country": "Japan", "product_focus": "construction machinery parts", "confidence": 75, "source_url": "https://www.earth-machine.jp/trade/", "snippet": "本業である「建機アタッチメント開発・製造販売」「建機整備/修理/メンテナンス」のノウハウを生かし、『建設機械や建機部品の輸出入貿易代行』をしております 〜", "post_date": null, "part_type": "construction machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T08:40:06.923829+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": "株式会社 東北海道ヂーゼルセンター", "business_type": "trading_company", "website": "https://hhdc.co.jp/", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural tractor parts", "confidence": 85, "source_url": "https://hhdc.co.jp/", "snippet": "農業機械用品を海外15カ国、国内各社から仕入れています。 農業用トラクター部品（tractor parts）や農機具パーツを10,000種類常時在庫. 農業用トラクター部品10,000種類常時 ...", "post_date": null, "part_type": "agricultural tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "デポスト株式会社", "business_type": "trading_company", "website": "https://eu-car.wixsite.com/machineryparts", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "農業機械・建設機械パーツ", "confidence": 75, "source_url": "https://eu-car.wixsite.com/machineryparts", "snippet": "3​万円以上ご購入で送料無料！ 車の輸入部品屋さんPlus. 農業機械・建設機械パーツ運営会社 デポスト株式会社. 〒224-0025 神奈川県横浜市都筑区早渕3-32-22. bottom of ...", "post_date": null, "part_type": "農業機械・建設機械パーツ", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "エム・エス・ケー農業機械株式会社", "business_type": "importer", "website": "www.mskfm.co.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "large agricultural machinery, agricultural machinery parts", "confidence": 85, "source_url": "https://www.mskfm.co.jp/about/", "snippet": "エム・エス・ケー農業機械は、海外農機メーカーから大型農機や農機用部品を輸入し、 省力化・効率化を期待されるお客様に、製品の組合せによるソリューションとアフター ...", "post_date": null, "part_type": "large agricultural machinery, agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": null, "product_focus": null, "confidence": 0, "source_url": "https://faq-agriculture.kubota.co.jp/%E9%83%A8%E5%93%81%E3%81%AF%E3%81%A9%E3%81%93%E3%81%A7%E8%B3%BC%E5%85%A5%E3%81%A7%E3%81%8D%E3%81%BE%E3%81%99%E3%81%8B%EF%BC%9F-6758a1b5d85201f38674811a", "snippet": "部品はどこで購入できますか？ クボタ製品の部品は、お近くのクボタ農機販売店またはJAにてご購入いただけます。 ... 部品の価格（販売価格／卸価格／原価）が知りたい ...", "post_date": null, "part_type": "", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "サンセイイーストア", "business_type": "distributor", "website": "https://www.sanseicom.jp", "contact_email": "store@sanseicom.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, tractor parts", "confidence": 75, "source_url": "https://www.sanseicom.jp/product-list/261?srsltid=AfmBOool2pE5a0GwAJmVBp3lLu54QapSmt1OTo_wP8KARyx_q_dfzkXu", "snippet": "クボタ 部品(メンテナンス・修理整備)のページです。農業機械用部品・農機具部品の老舗通販サイト『サンセイイーストア』は、農機部品を幅広く安価に、全国へお届けし ...", "post_date": null, "part_type": "agricultural machinery parts, tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": null, "product_focus": "Kubota tractor parts", "confidence": 30, "source_url": "https://shopping.yahoo.co.jp/search/%E3%82%AF%E3%83%9C%E3%82%BF+%E9%83%A8%E5%93%81/0/", "snippet": "クボタ 部品の2026年7月最新 25695 件の人気商品一覧。ランキング・クチコミ・レビュー・最安値比較からお買得なおすすめ商品を探せます。LINEアカウント連携でPayPay ...", "post_date": null, "part_type": "Kubota tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, construction machinery parts, tractor engine parts, automotive parts", "confidence": 40, "source_url": "https://baseconnect.in/companies/keyword/2099b392-b009-4f7c-814b-a3a764c2f5d2", "snippet": "ヤンマーブランドのコンバインやトラクターといった建設機械部品や農業用機械部品、並びに自動車部品等の金属部品製造を手掛ける。 農業用トラクターのエンジン部品などを ...", "post_date": null, "part_type": "agricultural machinery parts, construction machinery parts, tractor engine parts, automotive parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "株式会社トーシン", "business_type": "trading_company", "website": "https://www.tractor-toshin.co.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, tractors", "confidence": 85, "source_url": "https://www.tractor-toshin.co.jp/activity/overseas.html", "snippet": "中古の農業機械や産業機械を調達し、アジアや東ヨーロッパなどの国々にトラクタなどを輸出しています。筑波、大阪、福岡の3ヤード体制で全国をカバー。", "post_date": null, "part_type": "agricultural machinery parts, tractors", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": null, "confidence": 30, "source_url": "https://mono-leaf.co.jp/agricultural-machinery-export-ranking/", "snippet": "農業機械の輸出額ランキング(2022年) ; 1位, トラクター, 260,574,623 ; 2位, コンバイン, 13,037,493 ; 3位, 刈払機, 12,561,326 ; 4位, 芝生刈込機 ...", "post_date": "Sep 25, 2023", "part_type": "", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "株式会社NYグローバル", "business_type": "trading_company", "website": "https://www.nyg0927.com/", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, construction machinery parts", "confidence": 85, "source_url": "https://www.nyg0927.com/", "snippet": "株式会社NYグローバルは、中古農業機械・建設機械の買取、海外輸出、国内販売を手掛ける会社です。主に海外からのニーズに対応すべく、日本で行き場を失った農機具を ...", "post_date": null, "part_type": "agricultural machinery parts, construction machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "World Bridge Link", "business_type": "trading_company", "website": "https://worldbridge-link.co.jp", "contact_email": "info@worldbridge-link.co.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, used agricultural equipment", "confidence": 75, "source_url": "https://worldbridge-link.co.jp/exporting/", "snippet": "日本からの直接輸入で低価格な農機具の仕入れが可能になります。 中古農機の海外輸出事業を行っています。 日本の農機具は中古でも簡単なメンテナンスで動かせるものが ...", "post_date": null, "part_type": "agricultural machinery parts, used agricultural equipment", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "マーケットエンタープライズ", "business_type": "trading_company", "website": "https://marketenterprise.co.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, used tractors", "confidence": 75, "source_url": "https://marketenterprise.co.jp/journal/20210706386.html", "snippet": "マーケットエンタープライズ（以下、ME）は、全国各地で中古農機具を買取し、海外へ輸出している。その輸出実績は世界80カ国を超える。", "post_date": "Jul 6, 2021", "part_type": "agricultural machinery parts, used tractors", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "日本中古農機組合", "business_type": "trading_company", "website": "https://chukonouki.co.jp/", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery, tractors, combine harvesters", "confidence": 75, "source_url": "https://chukonouki.co.jp/", "snippet": "農機具買取なら日本中古農機組合へ。トラクターやコンバインなど、中古農機専門の確かな目利きで適正査定。新潟・長野・岐阜・山形・愛知など出張・査定料は全て無料！", "post_date": null, "part_type": "agricultural machinery, tractors, combine harvesters", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "アースマシン", "business_type": "distributor", "website": "https://www.earth-machine.jp", "contact_email": "info@earth-machine.co.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, attachments, accessories, consumables", "confidence": 85, "source_url": "https://www.earth-machine.jp/component/agriculturalmachinery.html", "snippet": "建設機械用/農業機械用アタッチメントの開発･設計･製品製造･特注製作･販売･レンタル･リース。整備/修理/メンテナンス。高品質！低価格！部品/用品/消耗品の販売。", "post_date": null, "part_type": "agricultural machinery parts, attachments, accessories, consumables", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "ノウキナビ", "business_type": "distributor", "website": "https://karasawa-nouki.webflyer-adsist.com/", "contact_email": "noukinavi@noukinavi.com", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://karasawa-nouki.webflyer-adsist.com/", "snippet": "農機具純正部品の取寄せ販売通販サービスです。農機具に精通したスタッフが、安心・納得のサポートをご提供。農機販売店に行く必要もなく、欲しい農機具部品が通販で手 ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T09:06:31.504934+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": "唐沢農機サービス", "business_type": "distributor", "website": "https://www.karasawanouki.co.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, tractor parts", "confidence": 75, "source_url": "https://www.karasawanouki.co.jp/nouki_blog/kn20190925-2/", "snippet": "唐沢農機サービスではネットで部品が届く農機純正部品取り寄せサービスを展開しております。2019年1月10日現在部品の取り寄せが可能なメーカーは ...", "post_date": "Sep 21, 2019", "part_type": "agricultural machinery parts, tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "サンセイイーストア", "business_type": "distributor", "website": "sanseicom.jp", "contact_email": "store@sanseicom.jp", "phone": null, "country": "Japan", "product_focus": "農業機械用部品、農機具部品、耕うん爪、エレメント、アクセルワイヤー、Vベルト", "confidence": 75, "source_url": "https://www.sanseicom.jp/?srsltid=AfmBOooPD1mDOWm7W0qA8JNJtrlOjhraMGv4PnIj5eXsdOwPL-jrnsp3", "snippet": "『サンセイイーストア』は、農機具部品を幅広く安価に、全国へお届けしています。農業機械交換用耕うん爪、各種農業機械用エレメント アクセルワイヤー・Vベルト等、 ...", "post_date": null, "part_type": "農業機械用部品、農機具部品、耕うん爪、エレメント、アクセルワイヤー、Vベルト", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "repair_shop", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 60, "source_url": "https://www.do-blog.jp/earth-machine/article/1900/", "snippet": "海外製､高年式の機械で部品供給が無く困っている方から多くお問い合わせを頂きます。これらに合う中古品・リビルト品・新品部品が他に無いかを調べます。", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 40, "source_url": "https://baseconnect.in/companies/prefecture/9ebb3838-effc-47da-b634-994957a78319/category/877ecd88-823f-4f2f-8628-c97bb0f5c8c5", "snippet": "北海道の農林水産用機械専門商社業界の会社（株式会社・有限会社・NPO法人など）・企業を一覧にまとめました。業界や売上高、従業員規模などでさらに絞込が可能です。", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "国際農機株式会社", "business_type": "trading_company", "website": "https://www.kokusainohki.com", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery, tractor parts", "confidence": 85, "source_url": "https://www.kokusainohki.com/company", "snippet": "国際農機株式会社は、1967年創業の農業機械専門商社として、農業機械の輸入・輸出・卸売りを通じ、日本の農業発展に貢献しています。会社概要、沿革、企業理念など、 ...", "post_date": null, "part_type": "agricultural machinery, tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "株式会社コーンズ・エージー", "business_type": "importer", "website": "cornesag.com", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 85, "source_url": "https://www.cornesag.com/outline/business.html", "snippet": "酪農・農業機械の専門商社として、欧州・北米を中心に13カ国から最新の機械を輸入し、販売とアフターサービスを行なっています。海外取引先のメーカーから製品を輸入 ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "株式会社ナルビシ機械", "business_type": "wholesaler", "website": "http://narubishi.co.jp/", "contact_email": "sample@narubishi.co.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery, construction machinery, engines, parts, agricultural supplies", "confidence": 85, "source_url": "http://narubishi.co.jp/", "snippet": "私たちについて. 西日本を中心に、農業用機械、 建設機械、エンジン、部品、 農業資材を卸販売しております。 また、一部の機械の修理も行っております。", "post_date": null, "part_type": "agricultural machinery, construction machinery, engines, parts, agricultural supplies", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T08:40:05.110735+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": null, "confidence": 30, "source_url": "https://baseconnect.in/companies/prefecture/9ebb3838-effc-47da-b634-994957a78319/category/734a9cdf-b2af-4609-bb92-3ab7aadc0638", "snippet": "北海道の工業用機械専門商社業界の会社（株式会社・有限会社・NPO法人など）・企業を一覧にまとめました。業界や売上高、従業員規模などでさらに絞込が可能です。", "post_date": null, "part_type": "", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "KBKグループ", "business_type": "trading_company", "website": "https://www.kbk.co.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "mechanical components, screws, springs", "confidence": 75, "source_url": "https://www.kbk.co.jp/ja/business/mechanical_components", "snippet": "SOLUTION3 KBKグループは、世界中のお客様に向けて環境に十分配慮したねじ・ばねといった製品を確かなサプライチェーンを活用し安全・安心とともに提供します。", "post_date": null, "part_type": "mechanical components, screws, springs", "has_product": true, "matched_category": "Other > Fasteners & Hardware", "matched_brand": "Universal", "match_reason": "matched keyword: spring", "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "株式会社マクシスコーポレーション", "business_type": "trading_company", "website": "https://www.maxis.co.jp", "contact_email": "cardservice@maxis.co.jp", "phone": null, "country": "Japan", "product_focus": "construction machinery parts, after-market parts, OEM products", "confidence": 75, "source_url": "https://www.maxis.co.jp/service/overseas_trade/", "snippet": "国産商品を始め様々な、建機に関わる部品の輸出入業務などを手掛けています。 アフターパーツ及びOEM 製品の供給を主体とし、お客様のニーズに合った商品の調達を ...", "post_date": null, "part_type": "construction machinery parts, after-market parts, OEM products", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "伸工貿易株式会社", "business_type": "trading_company", "website": "shinkoboeki.co.jp", "contact_email": "e-mail@shinkoboeki.co.jp", "phone": null, "country": "Japan", "product_focus": "足回り部品, 架装部品, トラクタ/トレーラ接続部品, タンク, ブレーキ・システム部品, 配管部品", "confidence": 75, "source_url": "https://www.shinkoboeki.co.jp/business/industrial_machinery", "snippet": "足回り部品 / 架装部品 / トラクタ/トレーラ接続部品 / タンク / ブレーキ・システム部品/配管部品 ... 伸工貿易は、創業後まもなく英国のトルク機器専門メーカーである ...", "post_date": null, "part_type": "足回り部品, 架装部品, トラクタ/トレーラ接続部品, タンク, ブレーキ・システム部品, 配管部品", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T09:06:04.602175+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": "桑野産業株式会社", "business_type": "trading_company", "website": "https://www.kuwano-ind.com", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "automotive parts, electronic equipment", "confidence": 65, "source_url": "https://www.kuwano-ind.com/business/tradesupport.html", "snippet": "長年に渡る電子機器の設計開発、自動車部品の製造で培った生産技術力、トヨタ生産方式、品質管理手法をもとに「ものづくり」をサポートするトータルソリューション ...", "post_date": null, "part_type": "automotive parts, electronic equipment", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": null, "product_focus": "agricultural machinery parts", "confidence": 30, "source_url": "https://shopping.yahoo.co.jp/search/%E3%83%A4%E3%83%B3%E3%83%9A%E3%83%BC%E9%83%A8%E5%93%81/0/", "snippet": "ヤンマー部品の2026年7月最新 32963 件の人気商品一覧。ランキング・クチコミ・レビュー・最安値比較からお買得なおすすめ商品を探せます。LINEアカウント連携でPayPay ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "サンセイイーストア", "business_type": "distributor", "website": "https://www.sanseicom.jp", "contact_email": "store@sanseicom.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, farm equipment parts", "confidence": 75, "source_url": "https://www.sanseicom.jp/product-list/508?srsltid=AfmBOoqmcqUHCtiHwPZllYAVuWKzhGL0MdnCS_ab-AAQD90sLmBMsmNu", "snippet": "ヤンマー機械用 の商品一覧ページです。農業機械用部品・農機具部品の老舗通販サイト『サンセイイーストア』は、農機部品を幅広く安価に、全国へお届けしています。", "post_date": null, "part_type": "agricultural machinery parts, farm equipment parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T09:06:09.486920+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": "UEJ Co. Ltd.", "business_type": "trading_company", "website": "https://www.uej.jp/", "contact_email": "info@uej.jp", "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, used tractors, excavators, Kubota, Yanmar", "confidence": 85, "source_url": "https://www.uej.jp/", "snippet": "Kubota, Massey Ferguson, Mitsubishi, Shibaura, Yanmar. Search by Type: Please ... TRACTOR, BUY, USED TRACTOR, EXCAVATOR, PARTS, JAPAN, KYUSHU, トラクター ...", "post_date": null, "part_type": "agricultural machinery parts, used tractors, excavators, Kubota, Yanmar", "has_product": false, "match_reason": "not our product: excavator", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Japan Marine Engineering", "business_type": "dealer", "website": null, "contact_email": null, "phone": null, "country": "Australia", "product_focus": "Yanmar tractor parts", "confidence": 75, "source_url": "https://www.yanmar.com/global/dealerlocator/au/10367/", "snippet": "If you need to find a Yanmar dealer near you, please use our dealer locator tool by simply entering your address or the dealer's name you are looking for.", "post_date": null, "part_type": "Yanmar tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "SOTA", "business_type": "distributor", "website": "sotatractors.com", "contact_email": null, "phone": null, "country": "Australia", "product_focus": "Kubota tractor spare parts, Japanese delivery Kubota tractor spare parts", "confidence": 75, "source_url": "https://www.sotatractors.com/warranty-service-and-support/kubota-tractor-spare-parts/", "snippet": "While SOTA stocks some common spare parts for “Australian delivery” Kubota tractors, SOTA specialises in “Japanese delivery” Kubota tractor spare parts. If your ...", "post_date": null, "part_type": "Kubota tractor spare parts, Japanese delivery Kubota tractor spare parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Tractor Imports", "business_type": "importer", "website": "kubotaparts.com.au", "contact_email": null, "phone": null, "country": "Australia", "product_focus": "Kubota Tractors, engine spare parts, non-genuine Kubota Tractors, spare parts", "confidence": 75, "source_url": "https://tractorimports.com.au/", "snippet": "At kubotaparts.com.au we specialise in non-genuine Kubota Tractors and engine spare parts. Providing high quality spare parts for your Kubota machines, at ...", "post_date": null, "part_type": "Kubota Tractors, engine spare parts, non-genuine Kubota Tractors, spare parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Yangmart Industrial Co., Ltd", "business_type": "trading_company", "website": "www.yangmart-taiwan.com", "contact_email": null, "phone": null, "country": "Taiwan", "product_focus": "YANMAR GENUINE PARTS, MITSUBISHI HEAVY GENUINE PARTS, KUBOTA (GENERATOR) GENUINE PARTS", "confidence": 85, "source_url": "https://www.yangmart-taiwan.com/japan-genuine-parts.htm", "snippet": "YANMAR GENUINE PARTS; MITSUBISHI HEAVY GENUINE PARTS; KUBOTA (GENERATOR) GENUINE PARTS; AND MORE… (PLS FEEL FREE TO INQUIRE US).", "post_date": null, "part_type": "YANMAR GENUINE PARTS, MITSUBISHI HEAVY GENUINE PARTS, KUBOTA (GENERATOR) GENUINE PARTS", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "TracPartz", "business_type": "distributor", "website": "https://www.tracpartz.com/", "contact_email": null, "phone": null, "country": "United Kingdom", "product_focus": "Japanese diesel engine parts, Kubota, Yanmar", "confidence": 85, "source_url": "https://www.tracpartz.com/", "snippet": "We are Europe's largest supplier of Japanese diesel engine parts. From Iseki and Yanmar to Kubota. We have all parts in stock. Order safely and quickly at ...", "post_date": null, "part_type": "Japanese diesel engine parts, Kubota, Yanmar", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "YASHIMA（THAILAND）CO.,LTD.", "business_type": "trading_company", "website": "www.yashima-denso.jp", "contact_email": null, "phone": null, "country": "Thailand", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.yashima-denso.jp/thailand", "snippet": "... agricultural machinery; parts planning; import/export sales. Related ... We import and export products to Japan and neighboring countries, or we produce ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 30, "source_url": "https://www.zauba.com/import-agricultural-machinery-parts/hs-code-84339000-hs-code.html", "snippet": "Information and reports on Agricultural Machinery Parts Imports Under HS Code 84339000 along with detailed shipment data, import price, export price, ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Tokyo Sangyo Asia Trading Co., Ltd.", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://bangkokcp.com/en/category1/%E6%A9%9F%E6%A2%B0%EF%BC%88%E8%A3%BD%E5%93%81%E3%83%BB%E7%B5%84%E7%AB%8B%EF%BC%89/page/32/?sort=date_asc", "snippet": "Automobile/motorcycle/agricultural machinery parts manufacturing ... import and export of ... Tokyo Sangyo Asia Trading Co., Ltd. Company name (in Japanese).", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": null, "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Kyrgyz Republic", "product_focus": "agricultural machinery parts", "confidence": 30, "source_url": "https://openjicareport.jica.go.jp/pdf/12149449.pdf", "snippet": "3.2.1 Import and Export of Agricultural Machinery ... Currently, several agricultural machinery parts, introduced before independence, are still available.", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Endo Manufacturing Co., Ltd.", "business_type": "trading_company", "website": "endo-mfg.co.jp", "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts, automobile parts, machine tool parts", "confidence": 85, "source_url": "https://endo-mfg.co.jp/en/location/", "snippet": "... agricultural machinery parts, automobile parts, machine tool parts ... was established in 2007 as a trading company specializing in the import and export ...", "post_date": null, "part_type": "agricultural machinery parts, automobile parts, machine tool parts", "has_product": false, "match_reason": "not our product: automobile", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Bonagrisol LLC", "business_type": "importer", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://jp.linkedin.com/company/bonagrisol-llc", "snippet": "We are dealers of new and used agricultural machinery and parts. we supply a wide range of certified machines and power tools directly from Japan. ウェブサイト ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Agricultural Equipment Holdings - AEH Group", "business_type": "distributor", "website": null, "contact_email": null, "phone": null, "country": "Australia", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.linkedin.com/company/agricultural-equipment-holdings", "snippet": "Agricultural Equipment Holdings - AEH Group. Machinery Manufacturing. Australian leader in the sale and service of agricultural machinery. Follow.", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Bonagrisol LLC", "business_type": "dealer", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery and parts", "confidence": 75, "source_url": "https://mz.linkedin.com/company/bonagrisol-llc?trk=ppro_cprof", "snippet": "We are dealers of new and used agricultural machinery and parts. we supply a wide range of certified machines and power tools directly from Japan. Site: https ...", "post_date": null, "part_type": "agricultural machinery and parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Shandong Yuntai Machinery co., ltd.", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "China", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.linkedin.com/company/shandong-yuntai-machinery-co-ltd-", "snippet": "... agricultural machinery Import and Export Corporation, which has an independent import and export rights. Shandong Yuntai Machinery Co.,Ltd covering 35000 ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Hubei YongXiang Agricultural Machinery Equipment Co.,Ltd", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "China", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.linkedin.com/company/hubei-yongxiang-agricultural-machinery-equipment-co-ltd", "snippet": "HUBEI YONGXIANG AGRICULTURAL MACHINERY EQUIPMENT CO.,LTD was founded in 2014 in China,Hubei province,and has since become a trusted brand in the agricultural ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "China Agricultural Machinery Distribution Association", "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "China", "product_focus": "agricultural machinery parts", "confidence": 40, "source_url": "https://www.linkedin.com/company/china-agricultural-machinery-distribution-association-camda", "snippet": "CAMDA is a nationwide organization covering agricultural machinery distribution enterprises, manufacturing enterprises, universities, colleges, institutes, ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Chongqing Senci Wugu Agricultural Machinery Import&Export Co.,LTD", "business_type": "importer", "website": "aimaagro.cn", "contact_email": null, "phone": null, "country": "China", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.linkedin.com/company/%E9%87%8D%E5%BA%86%E7%A5%9E%E9%A9%B0%E4%BA%94%E8%B0%B7%E5%86%9C%E6%9C%BA%E8%BF%9B%E5%87%BA%E5%8F%A3%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8", "snippet": "About us ; Website: www.aimaagro.cn. External link for Chongqing Senci Wugu Agricultural Machinery Import&Export Co.,LTD ; Industry: Machinery Manufacturing.", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "CEMA", "business_type": "unknown", "website": null, "contact_email": null, "phone": null, "country": "Japan", "product_focus": "agricultural machinery parts", "confidence": 30, "source_url": "https://be.linkedin.com/company/cema", "snippet": "CEMA is the association representing the European agricultural machinery industry. With 11 national member associations, the CEMA network represents both large ...", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Sabin Enterprises", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "India", "product_focus": "agricultural machinery and equipment", "confidence": 75, "source_url": "https://in.linkedin.com/company/sabin-enterprises", "snippet": "Sabin Enterprises is an Exporter of Agricultural machinery and equipment founded in 1993 with a view to boosting sales in International markets for India.", "post_date": null, "part_type": "agricultural machinery and equipment", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Sakiroglu Agricultural Machinery", "business_type": "trading_company", "website": null, "contact_email": null, "phone": null, "country": "Turkey", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://www.linkedin.com/company/sakiroglu-agriculture", "snippet": "Sakiroglu Agricultural Machinery | 139 followers on LinkedIn. Şakiroğlu Agriculture, starts to take a step in agriculture sector in 1982.", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Aeco Tractors", "business_type": "distributor", "website": "aecotractors.ae", "contact_email": "aeco786@gmail.com", "phone": "+971 50 975 6026", "country": "United Arab Emirates", "product_focus": "tractor parts", "confidence": 95, "source_url": "https://aecotractors.ae/genuine-massey-ferguson-tractor-parts/", "snippet": "... TRACTOR · TRACTOR SPARE PARTS. Stay Connected. aeco786@gmail.com · +971 50 975 6026 (SALES & INQUIRY) · +971 50 712 7836 (WHATSAPP) · Ras Al Khor, UAE.", "post_date": null, "part_type": "tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": true, "contacted_at": "2026-07-09T07:59:17.177675+00:00", "status": "contacted", "notes": "Email sent via viewer"}, {"company_name": "Nextgen Trac Spares Private Limited", "business_type": "distributor", "website": "www.nextgenspareparts.com", "contact_email": null, "phone": null, "country": "Africa", "product_focus": "tractor spare parts", "confidence": 85, "source_url": "https://www.nextgenspareparts.com/", "snippet": "Offering Tractor Spare Parts For SDF, Green Tractor, Sonalika, New Holland, Farmtrac, Mahindra, Swaraj, Tafe, Carraro and Many OEM Brands. Send Inquiry.", "post_date": null, "part_type": "tractor spare parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Kaisan Mesanari Parts", "business_type": "importer", "website": null, "contact_email": null, "phone": null, "country": "Nepal", "product_focus": "tractor spare parts", "confidence": 75, "source_url": "https://www.go4worldbusiness.com/buyers/nepal/tractor-spare-parts.html", "snippet": "Find Verified Tractor Spare Parts Buyers, Importers and Buy Leads ; Kaisan Mesanari Parts , Kapilvastu - Taulihawa Nepal. Buyer From Nepal · Tractor Spare Parts.", "post_date": null, "part_type": "tractor spare parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Yanmar Agricultural Machinery(Korea) Co.,ltd.", "business_type": "distributor", "website": null, "contact_email": null, "phone": null, "country": "South Korea", "product_focus": "Agricultural tractors, agricultural tractor components, building contractors, agricultural building", "confidence": 85, "source_url": "https://kr.kompass.com/c/yanmar-agricultural-machinery-korea-co-ltd/kr033655/", "snippet": "YANMAR AGRICULTURAL MACHINERY(KOREA) CO.,LTD. • Agricultural tractors ... Agricultural tractor components · Building contractors · Agricultural building ...", "post_date": null, "part_type": "Agricultural tractors, agricultural tractor components, building contractors, agricultural building", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Firth & Stephenson Kubota Limited", "business_type": "dealer", "website": null, "contact_email": null, "phone": null, "country": "New Zealand", "product_focus": "Kubota tractors, RTVs, Mower Ride ons, and accessories", "confidence": 75, "source_url": "https://nz.kompass.com/c/firth-stephenson-kubota-limited/nz206418/", "snippet": "Firth and Stephenson are Tararua's only Kubota agent specialising in a range of new Kubota tractors, RTVs, Mower Ride ons and accessories.", "post_date": null, "part_type": "Kubota tractors, RTVs, Mower Ride ons, and accessories", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "YANMAR AGRICULTURAL MACHINERY(KOREA) CO.,LTD.", "business_type": "distributor", "website": null, "contact_email": null, "phone": null, "country": "South Korea", "product_focus": "Agricultural tractor components; Agricultural building contractors", "confidence": 75, "source_url": "https://kr.kompass.com/a/agricultural-tractors/48010/", "snippet": "YANMAR AGRICULTURAL MACHINERY(KOREA) CO.,LTD. Jeollabuk-do - South Korea. Supplier of: Agricultural tractor components; Agricultural building contractors.", "post_date": null, "part_type": "Agricultural tractor components; Agricultural building contractors", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Kubota Agricultural Machinery India Private Limited", "business_type": "distributor", "website": null, "contact_email": null, "phone": null, "country": "India", "product_focus": "agricultural machinery parts", "confidence": 75, "source_url": "https://lb.kompass.com/c/kubota-agricultural-machinery-india-private-limited/inc0469114/", "snippet": "Kubota Agricultural Machinery India Private Limited is a agricultural machinery manufacturing and supplying company in Chennai, Tamil nidus.", "post_date": null, "part_type": "agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "YANMAR AGRICULTURAL MACHINERY(KOREA) CO.,LTD.", "business_type": "distributor", "website": null, "contact_email": null, "phone": null, "country": "South Korea", "product_focus": "Agricultural tractor components", "confidence": 75, "source_url": "https://www.kompass.com/z/kr/a/agricultural-tractors/48010/", "snippet": "YANMAR AGRICULTURAL MACHINERY(KOREA) CO.,LTD. Jeollabuk-do - South Korea. Supplier of: Agricultural tractor components; Agricultural building contractors.", "post_date": null, "part_type": "Agricultural tractor components", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Escorts Kubota Limited", "business_type": "distributor", "website": null, "contact_email": null, "phone": null, "country": "India", "product_focus": "internal combustion engines, agricultural machinery parts", "confidence": 85, "source_url": "https://rs.kompass.com/c/escorts-kubota-limited/in486526/", "snippet": "Escorts Kubota Ltd is a leading Indian engineering conglomerate headquartered in Faridabad, Haryana, specializing in the manufacture and supply of ...", "post_date": null, "part_type": "internal combustion engines, agricultural machinery parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "KMP Brand", "business_type": "distributor", "website": "kmpbrand.com", "contact_email": null, "phone": null, "country": null, "product_focus": "tractor parts", "confidence": 75, "source_url": "https://www.kmpbrand.com/sectors/tractor-parts-kmp/", "snippet": "Sourcing Aftermarket Tractor Parts Online. Our product development team is ... Contact Us · Returns · Warranty · Distributor Marketing Library · Parts ...", "post_date": null, "part_type": "tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Vehicle Lifetime Solutions", "business_type": "trading_company", "website": "vehiclelifetimesolutions.schaeffler.co.uk", "contact_email": null, "phone": null, "country": "United Kingdom", "product_focus": "tractor parts, aftermarket parts", "confidence": 75, "source_url": "https://vehiclelifetimesolutions.schaeffler.co.uk/en-gb/tractor-parts-shop", "snippet": "Please follow the link below or contact us directly for more information to help your requirement. PRODUCT CATALOGUE. schaeffler-aftermarket-tractor-parts- ...", "post_date": null, "part_type": "tractor parts, aftermarket parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "GWT Tractors", "business_type": "distributor", "website": "gwtractors.com.au", "contact_email": null, "phone": null, "country": "Australia", "product_focus": "tractor parts", "confidence": 75, "source_url": "https://gwtractors.com.au/mccormick-tractor-parts/", "snippet": "Everything you need to keep your tractor working. Contact us for McCormick replacement parts. Your name ...", "post_date": null, "part_type": "tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Tractor Parts", "business_type": "distributor", "website": "tractorparts.co.nz", "contact_email": null, "phone": null, "country": "New Zealand", "product_focus": "tractor spares, new and used tractor parts, aftermarket tractor parts", "confidence": 75, "source_url": "https://www.tractorparts.co.nz/", "snippet": "What we do. Tractor Dismantling; New Genuine Tractor Parts; Old-Stock New Tractor Parts; Aftermarket Tractor Parts ... Contact Us. 147 Riverlea Road, Hamilton 07 ...", "post_date": null, "part_type": "tractor spares, new and used tractor parts, aftermarket tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Eastman Parts", "business_type": "distributor", "website": "https://www.eastmanparts.com.au", "contact_email": null, "phone": null, "country": "Australia", "product_focus": "tractor parts", "confidence": 75, "source_url": "https://www.eastmanparts.com.au/tractor-parts/?srsltid=AfmBOoplcQwENwz2NQxqVK4HgP5GV7T2TBP2rTxsMWR88GRof9hM5mcf", "snippet": "Aftermarket tractor parts are ... Contact Us. Information. Terms of Use · Privacy Policy · Returns Policy · Security Policy · Frequently Asked ...", "post_date": null, "part_type": "tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Moving Parts", "business_type": "distributor", "website": "https://movingparts.co.za/", "contact_email": null, "phone": null, "country": "South Africa", "product_focus": "tractor parts, farm equipment parts", "confidence": 85, "source_url": "https://movingparts.co.za/", "snippet": "Moving Parts is your trusted national supplier of high-quality aftermarket tractor parts across South Africa. ... Contact us today to learn more about our ...", "post_date": null, "part_type": "tractor parts, farm equipment parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}, {"company_name": "Alexander's Tractor Parts", "business_type": "distributor", "website": "alexanderstractorparts.com", "contact_email": null, "phone": null, "country": "United States", "product_focus": "aftermarket tractor parts", "confidence": 85, "source_url": "https://www.alexanderstractorparts.com/?srsltid=AfmBOop4JJhby_t21CHSrJ1dzrK_l5u9yQu3E8oMxaGeaTw_3NCAZCMj", "snippet": "Get back to work fast with affordable aftermarket tractor parts. Start ... Contact Us · Texas | Tyler | Amarillo | Lubbock | Midland | Killeen | Oklahoma ...", "post_date": null, "part_type": "aftermarket tractor parts", "has_product": false, "match_reason": "no matching product in inventory", "matched_category": null, "matched_brand": null, "contacted": false, "contacted_at": null, "status": "new", "notes": null}]};
+
+let allData = [], allB2b = [];
+let currentTab = 'pending', currentTabB2b = 'pending';
+let currentPipeline = 'signals';
+
+function loadData() {
+  allData = window._EMBEDDED_DATA.signals || (Array.isArray(window._EMBEDDED_DATA) ? window._EMBEDDED_DATA : []);
+  window._rawRunTs = window._EMBEDDED_DATA.run_timestamp || '';
+  allB2b = window._EMBEDDED_B2B_DATA.companies || (Array.isArray(window._EMBEDDED_B2B_DATA) ? window._EMBEDDED_B2B_DATA : []);
+  document.getElementById('count-signals').textContent = allData.length;
+  document.getElementById('count-b2b').textContent = allB2b.length;
+  initSignalFilters();
+  initB2bFilters();
+  updateQuotaBars();
+  checkServerStatus();
+  renderSignals();
+}
+
+function checkServerStatus() {
+  fetch(SERVER + '/api/quota')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      serverOnline = true;
+      window._EMAIL_STATS = data;
+      updateQuotaBars();
+      // Enable send buttons if there are candidates with email
+      var hasEmailSig = allData.some(function(s) { return s.contact_email && !s.contacted; });
+      var hasEmailB2b = allB2b.some(function(c) { return c.contact_email && !c.contacted; });
+      document.getElementById('send-all-signals').disabled = !hasEmailSig || !data.ok;
+      document.getElementById('send-all-b2b').disabled = !hasEmailB2b || !data.ok;
+    })
+    .catch(function() {
+      serverOnline = false;
+      document.getElementById('send-all-signals').disabled = true;
+      document.getElementById('send-all-b2b').disabled = true;
+      document.getElementById('status-signals').className = 'send-status error';
+      document.getElementById('status-signals').textContent = 'Server offline — 请先启动 python server.py';
+      document.getElementById('status-b2b').className = 'send-status error';
+      document.getElementById('status-b2b').textContent = 'Server offline — 请先启动 python server.py';
+    });
+}
+
+function updateQuotaBars() {
+  if (serverOnline) {
+    fetch(SERVER + '/api/quota')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        window._EMAIL_STATS = data;
+        _renderQuotaBars(data);
+      })
+      .catch(function() {
+        _renderQuotaBars(window._EMAIL_STATS || {sent_today: 0, daily_limit: 30, remaining: 30});
+      });
+  } else {
+    _renderQuotaBars(window._EMAIL_STATS || {sent_today: 0, daily_limit: 30, remaining: 30});
+  }
+}
+
+function _renderQuotaBars(stats) {
+  var sent = stats.sent_today || 0;
+  var limit = stats.daily_limit || 30;
+  var remaining = stats.remaining || 30;
+  var pct = Math.min(100, Math.round((sent / limit) * 100));
+
+  ['signals', 'b2b'].forEach(function(panel) {
+    var bar = document.getElementById('quota-bar-' + panel);
+    if (bar) {
+      bar.style.display = '';
+      document.getElementById('quota-text-' + panel).textContent = sent + '/' + limit + ' (剩余 ' + remaining + ')';
+      var fill = document.getElementById('quota-fill-' + panel);
+      fill.style.width = pct + '%';
+      fill.className = 'progress-fill' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warning' : '');
+    }
+  });
+}
+
+function isEmailSent(sourceUrl) {
+  return localStorage.getItem('email_sent:' + sourceUrl) === 'true';
+}
+function markEmailSent(sourceUrl) {
+  localStorage.setItem('email_sent:' + sourceUrl, 'true');
+}
+
+// ─── Preview Email ────────────────────────────────────────────────────────
+function previewEmail(sourceUrl, sourceType, btnEl) {
+  if (!serverOnline) {
+    alert('邮件服务器未连接。请先启动: python server.py');
+    return;
+  }
+  var previewId = 'preview-' + sourceUrl.replace(/[^a-zA-Z0-9]/g, '').substring(0,30);
+  var previewEl = document.getElementById(previewId);
+  if (!previewEl) return;
+
+  // Toggle: if already open and has content, close it
+  if (previewEl.classList.contains('open') && previewEl.innerHTML) {
+    previewEl.classList.remove('open');
+    previewEl.innerHTML = '';
+    return;
+  }
+
+  btnEl.classList.add('loading');
+  previewEl.innerHTML = '<div style="padding:12px;color:var(--text-secondary);font-size:13px;">正在生成开发信，请稍候...</div>';
+  previewEl.classList.add('open');
+
+  fetch(SERVER + '/api/preview-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_url: sourceUrl, source_type: sourceType })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btnEl.classList.remove('loading');
+    if (!data.ok) {
+      previewEl.innerHTML = '<div style="padding:12px;color:var(--danger-text);font-size:13px;">生成失败: ' + esc(data.error || '未知错误') + '</div>';
+      return;
+    }
+    previewEl.innerHTML =
+      '<div class="preview-header">' +
+        '<span class="preview-lang-tag">' + esc(data.language || data.lang_code || 'English') + '</span>' +
+        '<span style="font-size:12px;color:var(--text-secondary);">点击发送后会发出以下内容</span>' +
+      '</div>' +
+      '<div class="preview-subject">主题: ' + esc(data.subject || '无主题') + '</div>' +
+      '<div class="preview-body">' + esc(data.body || '').replace(/\n/g, '<br>') + '</div>' +
+      '<div class="preview-actions">' +
+        '<button class="copy-btn" onclick="copyPreview(this,\'' + escAttr(data.body || '') + '\')">复制全文</button>' +
+      '</div>';
+  })
+  .catch(function(err) {
+    btnEl.classList.remove('loading');
+    previewEl.innerHTML = '<div style="padding:12px;color:var(--danger-text);font-size:13px;">请求失败，请检查服务器是否运行</div>';
+  });
+}
+
+function copyPreview(btn, text) {
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = '已复制'; btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = '复制全文'; btn.classList.remove('copied'); }, 2000);
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    btn.textContent = '已复制'; btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = '复制全文'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function sendEmailAJAX(sourceUrl, sourceType, btnEl) {
+  if (!serverOnline) {
+    alert('邮件服务器未连接。请先启动: python server.py');
+    return;
+  }
+  btnEl.disabled = true;
+  btnEl.textContent = '发送中...';
+
+  fetch(SERVER + '/api/send-one', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({source_url: sourceUrl, source_type: sourceType})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      btnEl.classList.add('sent');
+      btnEl.textContent = '已发送 (' + (data.language || '') + ')';
+      btnEl.disabled = false;
+      markEmailSent(sourceUrl);
+      updateQuotaBars();
+    } else {
+      btnEl.textContent = '失败';
+      btnEl.style.color = 'var(--danger-text)';
+      btnEl.style.borderColor = 'var(--danger-text)';
+      setTimeout(function() {
+        btnEl.disabled = false;
+        btnEl.textContent = '重试';
+      }, 3000);
+    }
+  })
+  .catch(function(err) {
+    btnEl.textContent = '错误';
+    btnEl.style.color = 'var(--danger-text)';
+    setTimeout(function() {
+      btnEl.disabled = false;
+      btnEl.textContent = '重试';
+    }, 3000);
+  });
+}
+
+function sendAllEmails(pipeline) {
+  if (!serverOnline) {
+    alert('邮件服务器未连接。请先启动: python server.py');
+    return;
+  }
+
+  var items = pipeline === 'signals' ? allData : allB2b;
+  var sourceType = pipeline === 'signals' ? 'signal' : 'b2b';
+  var toSend = items.filter(function(item) {
+    return item.contact_email && !item.contacted && !isEmailSent(item.source_url);
+  });
+
+  if (toSend.length === 0) {
+    alert('没有可发送的邮件');
+    return;
+  }
+
+  if (!confirm('将发送 ' + toSend.length + ' 封邮件，确认？')) return;
+
+  var btn = document.getElementById('send-all-' + pipeline);
+  var progressDiv = document.getElementById('progress-' + pipeline);
+  var progressText = document.getElementById('progress-text-' + pipeline);
+  var progressBar = document.getElementById('progress-bar-' + pipeline);
+  var statusEl = document.getElementById('status-' + pipeline);
+
+  btn.disabled = true; btn.textContent = '发送中...';
+  progressDiv.style.display = 'block';
+  statusEl.textContent = '';
+  statusEl.className = 'send-status';
+
+  var batchItems = toSend.map(function(item) {
+    return {source_url: item.source_url, source_type: sourceType};
+  });
+
+  // Track progress locally while server processes batch
+  var total = toSend.length;
+  progressText.textContent = '0/' + total + ' 发送中...';
+  progressBar.style.width = '0%';
+
+  fetch(SERVER + '/api/send-batch', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({items: batchItems})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    // Mark all as sent locally
+    toSend.forEach(function(item) {
+      markEmailSent(item.source_url);
+    });
+    // Also mark in data arrays
+    items.forEach(function(item) {
+      var wasSent = toSend.some(function(ts) { return ts.source_url === item.source_url; });
+      if (wasSent) {
+        item.contacted = true;
+        item.contacted_at = new Date().toISOString();
+      }
+    });
+
+    progressText.textContent = data.sent + '/' + total + ' 已发送, ' + data.failed + ' 失败';
+    progressBar.style.width = '100%';
+    statusEl.className = 'send-status success';
+    statusEl.textContent = data.sent + ' 封已发送, 剩余额度 ' + (data.remaining || 0);
+    btn.textContent = '发送完成';
+    btn.style.background = 'var(--success-bg)';
+    btn.style.color = 'var(--success-text)';
+    btn.style.borderColor = 'var(--success-text)';
+
+    updateQuotaBars();
+    if (pipeline === 'signals') renderSignals(); else renderB2b();
+  })
+  .catch(function(err) {
+    progressText.textContent = '发送出错: ' + (err.message || '连接失败');
+    statusEl.className = 'send-status error';
+    statusEl.textContent = '发送失败，请重试';
+    btn.disabled = false;
+    btn.textContent = '重试发送';
+  });
+}
+
+function scrapeEmails() {
+  var btn = document.getElementById('scrape-btn');
+  var statusEl = document.getElementById('status-b2b');
+  
+  btn.disabled = true;
+  btn.textContent = '爬取中...';
+  statusEl.className = 'send-status';
+  statusEl.textContent = '正在爬取网站邮箱，请稍候...';
+  
+  fetch('/api/scrape-emails', { method: 'POST' })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        btn.textContent = '爬取完成';
+        statusEl.className = 'send-status ok';
+        statusEl.textContent = data.message || ('爬取完成，找到 ' + data.found + ' 个新邮箱');
+        // Update embedded data with fresh companies from server
+        if (data.companies) {
+          window._EMBEDDED_B2B_DATA.companies = data.companies;
+        }
+        // Reload data and re-render B2B list
+        setTimeout(function() {
+          loadData();
+          renderB2b();
+          btn.disabled = false;
+          btn.textContent = '爬取邮箱';
+        }, 1000);
+      } else {
+        btn.disabled = false;
+        btn.textContent = '爬取邮箱';
+        statusEl.className = 'send-status error';
+        statusEl.textContent = '爬取失败: ' + (data.error || '未知错误');
+      }
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = '爬取邮箱';
+      statusEl.className = 'send-status error';
+      statusEl.textContent = '爬取出错: ' + (err.message || '连接失败');
+    });
+}
+
+// ─── Refresh B2B Pipeline (full re-scrape) ───────────────────────────────
+var _refreshPollTimer = null;
+
+function refreshB2b() {
+  var btn = document.getElementById('refresh-b2b-btn');
+  var statusEl = document.getElementById('status-b2b');
+
+  if (!serverOnline) {
+    alert('服务器未连接。请先启动: python server.py');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '刷新中...';
+  btn.style.opacity = '0.6';
+  statusEl.className = 'send-status';
+  statusEl.textContent = '正在启动B2B刷新...';
+
+  var progressDiv = document.getElementById('refresh-progress-b2b');
+  var progressText = document.getElementById('refresh-text-b2b');
+  var progressBar = document.getElementById('refresh-bar-b2b');
+  progressDiv.style.display = 'block';
+  progressText.textContent = '正在启动...';
+  progressBar.style.width = '0%';
+
+  fetch(SERVER + '/api/refresh-b2b', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.ok) {
+        if (data.status === 'running') {
+          statusEl.textContent = '刷新已在进行中...';
+        } else {
+          btn.disabled = false;
+          btn.textContent = '刷新B2B商家';
+          btn.style.opacity = '';
+          progressDiv.style.display = 'none';
+          statusEl.className = 'send-status error';
+          statusEl.textContent = '启动失败: ' + (data.error || '未知错误');
+          alert('刷新失败: ' + (data.error || '未知错误'));
+          return;
+        }
+      }
+      statusEl.textContent = '刷新已启动，请稍候...';
+      startRefreshPoll();
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = '刷新B2B商家';
+      btn.style.opacity = '';
+      progressDiv.style.display = 'none';
+      statusEl.className = 'send-status error';
+      statusEl.textContent = '连接失败: ' + (err.message || '');
+    });
+}
+
+function startRefreshPoll() {
+  if (_refreshPollTimer) clearInterval(_refreshPollTimer);
+  _refreshPollTimer = setInterval(pollRefreshStatus, 2500);
+  pollRefreshStatus();
+}
+
+function pollRefreshStatus() {
+  var btn = document.getElementById('refresh-b2b-btn');
+  var statusEl = document.getElementById('status-b2b');
+  var progressDiv = document.getElementById('refresh-progress-b2b');
+  var progressText = document.getElementById('refresh-text-b2b');
+  var progressBar = document.getElementById('refresh-bar-b2b');
+
+  fetch(SERVER + '/api/refresh-b2b/status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      progressBar.style.width = (data.progress_pct || 0) + '%';
+      progressText.textContent = data.message || '处理中...';
+
+      if (data.status === 'completed') {
+        clearInterval(_refreshPollTimer);
+        _refreshPollTimer = null;
+
+        btn.disabled = false;
+        btn.textContent = '刷新B2B商家';
+        btn.style.opacity = '';
+        statusEl.className = 'send-status success';
+        statusEl.textContent = data.message || '刷新完成';
+
+        progressBar.style.width = '100%';
+
+        // Reload data from server then auto-enable email filter
+        reloadB2bData(function() {
+          document.getElementById('b2b-filter-email').checked = true;
+          renderB2b();
+        });
+
+        setTimeout(function() {
+          progressDiv.style.display = 'none';
+        }, 5000);
+
+      } else if (data.status === 'error') {
+        clearInterval(_refreshPollTimer);
+        _refreshPollTimer = null;
+
+        btn.disabled = false;
+        btn.textContent = '刷新B2B商家';
+        btn.style.opacity = '';
+        statusEl.className = 'send-status error';
+        statusEl.textContent = '刷新失败: ' + (data.error || data.message);
+
+        progressDiv.style.display = 'none';
+      }
+    })
+    .catch(function(err) {
+      // Server might be temporarily busy, keep polling
+    });
+}
+
+function reloadB2bData(callback) {
+  fetch(SERVER + '/api/b2b-data')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok && data.companies) {
+        window._EMBEDDED_B2B_DATA.companies = data.companies;
+        allB2b = data.companies;
+        document.getElementById('count-b2b').textContent = allB2b.length;
+        initB2bFilters();
+        if (callback) callback();
+        else renderB2b();
+      }
+    })
+    .catch(function(err) {
+      console.error('Failed to reload B2B data:', err);
+    });
+}
+
+function exportYAMMCsv(pipeline) {
+  var items = pipeline === 'signals' ? getFilteredSignals() : getFilteredB2b();
+  var rows = [['Email', 'FirstName', 'LastName', 'Company', 'Subject', 'Body', 'SourceURL', 'Priority']];
+  items.forEach(function(item) {
+    var email = item.contact_email || '';
+    if (!email) return;
+    var name = item.company_name || item.contact_name || '';
+    var parts = name.split(' ');
+    var first = parts[0] || '';
+    var last = parts.slice(1).join(' ') || '';
+    var subject = pipeline === 'signals' ? 'Leeway Parts — ' + (item.part_type || 'Tractor Parts') + ' Inquiry' : 'Leeway Parts — ' + (item.product_focus || 'Agricultural Parts') + ' Partnership';
+    var body = item.outreach_draft || '';
+    rows.push([email, first, last, name, subject, body.replace(/"/g, '""'), item.source_url || '', (item.priority_score || item.confidence || 0)]);
+  });
+  
+  var csv = rows.map(function(r) {
+    return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
+  }).join('\n');
+  
+  var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'yamm_outreach_' + pipeline + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function switchPipeline(pipe) {
+  currentPipeline = pipe;
+  document.querySelectorAll('.tab[data-pipeline]').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-pipeline="' + pipe + '"]').classList.add('active');
+  document.getElementById('signals-panel').style.display = pipe === 'signals' ? '' : 'none';
+  document.getElementById('b2b-panel').style.display = pipe === 'b2b' ? '' : 'none';
+  if (pipe === 'b2b') renderB2b(); else renderSignals();
+}
+
+function initSignalFilters() {
+  var cats = new Set(), tags = new Set(), countries = new Set();
+  allData.forEach(function(s) {
+    if (s.matched_category) cats.add(s.matched_category);
+    if (s.tags) s.tags.forEach(function(t) { tags.add(t); });
+    if (s.country) countries.add(s.country);
+  });
+  populateSelect('filter-category', cats);
+  populateSelect('filter-tag', tags);
+  populateSelect('filter-country', countries);
+}
+
+function initB2bFilters() {
+  var types = new Set(), countries = new Set();
+  allB2b.forEach(function(c) {
+    if (c.business_type) types.add(c.business_type);
+    if (c.country) countries.add(c.country);
+  });
+  populateSelect('b2b-filter-type', types);
+  populateSelect('b2b-filter-country', countries);
+}
+
+function populateSelect(id, values) {
+  var sel = document.getElementById(id);
+  if (!sel) return;
+  var arr = []; values.forEach(function(v) { arr.push(v); });
+  arr.sort().forEach(function(v) {
+    var opt = document.createElement('option');
+    opt.value = v; opt.textContent = v; sel.appendChild(opt);
+  });
+}
+
+function switchTab(tab) { currentTab = tab; updateSignalTabs(); renderSignals(); }
+function switchTabB2b(tab) { currentTabB2b = tab; updateB2bTabs(); renderB2b(); }
+
+function updateSignalTabs() {
+  var tabs = document.querySelectorAll('#signals-panel .tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  var el = document.querySelector('#signals-panel .tab[data-tab="' + currentTab + '"]');
+  if (el) el.classList.add('active');
+}
+function updateB2bTabs() {
+  var tabs = document.querySelectorAll('#b2b-panel .tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  var el = document.querySelector('#b2b-panel .tab[data-tab="' + currentTabB2b + '"]');
+  if (el) el.classList.add('active');
+}
+
+document.getElementById('filter-urgency').addEventListener('change', renderSignals);
+document.getElementById('filter-category').addEventListener('change', renderSignals);
+document.getElementById('filter-tag').addEventListener('change', renderSignals);
+document.getElementById('filter-country').addEventListener('change', renderSignals);
+document.getElementById('b2b-filter-type').addEventListener('change', renderB2b);
+document.getElementById('b2b-filter-country').addEventListener('change', renderB2b);
+document.getElementById('b2b-filter-conf').addEventListener('change', renderB2b);
+
+function getFilteredSignals() {
+  var u = document.getElementById('filter-urgency').value;
+  var c = document.getElementById('filter-category').value;
+  var t = document.getElementById('filter-tag').value;
+  var n = document.getElementById('filter-country').value;
+  return allData.filter(function(s) {
+    if (currentTab === 'pending' && s.contacted) return false;
+    if (currentTab === 'contacted' && !s.contacted) return false;
+    if (u !== 'all' && s.urgency !== u) return false;
+    if (c !== 'all' && s.matched_category !== c) return false;
+    if (t !== 'all' && (!s.tags || s.tags.indexOf(t) === -1)) return false;
+    if (n !== 'all' && s.country !== n) return false;
+    return true;
+  });
+}
+
+function getFilteredB2b() {
+  var t = document.getElementById('b2b-filter-type').value;
+  var n = document.getElementById('b2b-filter-country').value;
+  var cf = document.getElementById('b2b-filter-conf').value;
+  var ef = document.getElementById('b2b-filter-email').checked;
+  return allB2b.filter(function(c) {
+    if (currentTabB2b === 'pending' && c.contacted) return false;
+    if (currentTabB2b === 'contacted' && !c.contacted) return false;
+    if (t !== 'all' && c.business_type !== t) return false;
+    if (n !== 'all' && c.country !== n) return false;
+    if (cf === 'high' && c.confidence < 70) return false;
+    if (cf === 'mid' && (c.confidence < 40 || c.confidence >= 70)) return false;
+    if (cf === 'low' && c.confidence >= 40) return false;
+    if (ef && !c.contact_email) return false;
+    return true;
+  });
+}
+
+function renderSignals() {
+  var filtered = getFilteredSignals();
+  filtered.sort(function(a, b) {
+        var aEmail = a.contact_email ? 1 : 0;
+        var bEmail = b.contact_email ? 1 : 0;
+        if (aEmail !== bEmail) return bEmail - aEmail;
+        return (b.priority_score || 0) - (a.priority_score || 0);
+    });
+  var ts = allData.length > 0 ? (window._rawRunTs || '') : '';
+  document.getElementById('timestamp').textContent = ts ? '数据更新时间: ' + formatTs(ts) : '等待数据...';
+  document.getElementById('stat-total').textContent = filtered.length;
+  document.getElementById('stat-high').textContent = filtered.filter(function(s) { return s.urgency === 'high'; }).length;
+  document.getElementById('stat-med').textContent = filtered.filter(function(s) { return s.urgency === 'medium'; }).length;
+  document.getElementById('stat-low').textContent = filtered.filter(function(s) { return s.urgency === 'low'; }).length;
+  document.getElementById('filter-count').textContent = '共 ' + filtered.length + ' 条';
+  document.getElementById('count-pending').textContent = allData.filter(function(s) { return !s.contacted; }).length;
+  document.getElementById('count-contacted').textContent = allData.filter(function(s) { return s.contacted; }).length;
+
+  var container = document.getElementById('cards-container');
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty">没有匹配的信号</div>'; return; }
+
+  container.innerHTML = filtered.map(function(s) {
+    var urg = s.urgency || 'low';
+    var badgeClass = urg;
+    var urgLabel = urg.toUpperCase();
+    var tags = (s.tags || []).map(function(t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
+    var country = s.country ? '<span class="tag country">' + esc(s.country) + '</span>' : '';
+    var buyer = '';
+    if (s.buyer_type && s.buyer_type !== 'unknown') {
+      var bMap = {individual_farmer:'个体农户', local_dealer:'本地经销商', repair_shop:'维修厂'};
+      buyer = '<span class="tag">' + (bMap[s.buyer_type] || s.buyer_type) + '</span>';
+    }
+    var category = s.matched_category ? '<span class="tag category">' + esc(s.matched_category) + '</span>' : '';
+    var contact = s.contact_method ? '<span class="tag contact">' + esc(s.contact_method) + '</span>' : '';
+    var poster = s.poster_username ? '<span class="tag">' + esc(s.poster_username) + '</span>' : '';
+    var model = s.machine_model ? '<span class="model">' + esc(s.machine_model) + '</span>' : '';
+    var snippet = s.snippet ? '<div class="snippet">' + esc(s.snippet) + '</div>' : '';
+    var date = s.post_date ? '<span class="tag" style="font-size:11px">' + esc(s.post_date) + '</span>' : '';
+    var urlShort = s.source_url ? s.source_url.replace(/^https?:\/\//, '').substring(0,60) : '';
+    var score = s.priority_score != null ? '<span class="score">评分 <strong>' + s.priority_score + '</strong></span>' : '';
+        var emailTag = s.contact_email ? '<span class="tag contact">📧 ' + esc(s.contact_email) + '</span>' : '<span class="tag" style="color:#999">无邮箱</span>';
+        var emailTag = s.contact_email ? '<span class="tag contact">📧 ' + esc(s.contact_email) + '</span>' : '<span class="tag" style="color:#999">无邮箱</span>';
+        var emailTag = s.contact_email ? '<span class="tag contact">📧 ' + esc(s.contact_email) + '</span>' : '<span class="tag" style="color:#999">无邮箱</span>';
+    var contactedClass = s.contacted ? ' contacted' : '';
+
+    var emailBtn = '';
+    var previewBtn = '<button class="preview-btn" onclick="previewEmail(\'' + escAttr(s.source_url) + '\',\'signal\',this)">预览邮件</button>';
+    if (s.contact_email && !s.contacted && !isEmailSent(s.source_url)) {
+      emailBtn = '<button class="email-btn" onclick="sendEmailAJAX(\'' + escAttr(s.source_url) + '\',\'signal\',this)">' + escAttr(s.contact_email) + '</button>';
+    } else if (s.contact_email && (s.contacted || isEmailSent(s.source_url))) {
+      emailBtn = '<span class="email-btn sent">已发送</span>';
+    }
+
+    var previewId = 'preview-' + escAttr(s.source_url).replace(/[^a-zA-Z0-9]/g, '').substring(0,30);
+
+    return '<div class="card' + contactedClass + '">' +
+      '<div class="card-header">' +
+        '<span class="badge ' + badgeClass + '">' + urgLabel + '</span>' +
+        '<span class="part-name">' + esc(s.part_type || '未知配件') + '</span>' +
+        model + score + emailTag + emailTag + emailTag +
+      '</div>' +
+      '<div class="card-meta">' + country + buyer + poster + category + contact + date + '</div>' +
+      snippet +
+      (tags ? '<div class="card-meta" style="margin-bottom:4px">' + tags + '</div>' : '') +
+      '<div class="card-actions">' + emailBtn + previewBtn + '</div>' +
+      '<div class="preview-section" id="' + previewId + '"></div>' +
+      '<div class="url-link"><a href="' + escAttr(s.source_url) + '" target="_blank" rel="noopener">' + esc(urlShort) + '</a></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderB2b() {
+  var filtered = getFilteredB2b();
+  filtered.sort(function(a, b) {
+        var aEmail = a.contact_email ? 1 : 0;
+        var bEmail = b.contact_email ? 1 : 0;
+        if (aEmail !== bEmail) return bEmail - aEmail;
+        return (b.confidence || 0) - (a.confidence || 0);
+    });
+
+  document.getElementById('b2b-stat-total').textContent = filtered.length;
+  document.getElementById('b2b-stat-high').textContent = filtered.filter(function(c) { return c.confidence >= 70; }).length;
+  document.getElementById('b2b-stat-mid').textContent = filtered.filter(function(c) { return c.confidence >= 40 && c.confidence < 70; }).length;
+  document.getElementById('b2b-stat-low').textContent = filtered.filter(function(c) { return c.confidence < 40; }).length;
+  document.getElementById('b2b-filter-count').textContent = '共 ' + filtered.length + ' 条';
+  document.getElementById('b2b-count-pending').textContent = allB2b.filter(function(c) { return !c.contacted; }).length;
+  document.getElementById('b2b-count-contacted').textContent = allB2b.filter(function(c) { return c.contacted; }).length;
+
+  var container = document.getElementById('b2b-cards-container');
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty">没有匹配的 B2B 商家</div>'; return; }
+
+  var typeMap = {importer:'进口商',distributor:'分销商',dealer:'经销商',wholesaler:'批发商',trading_company:'贸易公司',agent:'代理商',repair_shop:'维修厂',unknown:'未知'};
+
+  container.innerHTML = filtered.map(function(c) {
+    var conf = c.confidence || 0;
+    var confClass = conf >= 70 ? 'high' : conf >= 40 ? 'medium' : 'low';
+    var confLabel = conf >= 70 ? 'HIGH' : conf >= 40 ? 'MID' : 'LOW';
+    var typeLabel = typeMap[c.business_type] || c.business_type || '未知';
+    var country = c.country ? '<span class="tag country">' + esc(c.country) + '</span>' : '';
+    var bt = '<span class="tag">' + typeLabel + '</span>';
+    var website = c.website ? '<span class="tag" style="color:var(--accent)">' + esc(c.website) + '</span>' : '';
+    var email = c.contact_email ? '<span class="tag contact">' + esc(c.contact_email) + '</span>' : '';
+    var phone = c.phone ? '<span class="tag">' + esc(c.phone) + '</span>' : '';
+    var focus = c.product_focus ? '<span class="tag category">' + esc(c.product_focus) + '</span>' : '';
+    var snippet = c.snippet ? '<div class="snippet">' + esc(c.snippet) + '</div>' : '';
+    var urlShort = c.source_url ? c.source_url.replace(/^https?:\/\//, '').substring(0,60) : '';
+    var contactedClass = c.contacted ? ' contacted' : '';
+    var hasProduct = c.has_product ? '<span class="tag" style="background:var(--success-bg);color:var(--success-text)">有现货</span>' : '';
+
+    var emailBtn = '';
+    var previewBtn = '<button class="preview-btn" onclick="previewEmail(\'' + escAttr(c.source_url) + '\',\'b2b\',this)">预览邮件</button>';
+    if (c.contact_email && !c.contacted && !isEmailSent(c.source_url)) {
+      emailBtn = '<button class="email-btn" onclick="sendEmailAJAX(\'' + escAttr(c.source_url) + '\',\'b2b\',this)">' + escAttr(c.contact_email) + '</button>';
+    } else if (c.contact_email && (c.contacted || isEmailSent(c.source_url))) {
+      emailBtn = '<span class="email-btn sent">已发送</span>';
+    }
+
+    var previewId = 'preview-' + escAttr(c.source_url).replace(/[^a-zA-Z0-9]/g, '').substring(0,30);
+
+    return '<div class="card' + contactedClass + '">' +
+      '<div class="card-header">' +
+        '<span class="badge ' + confClass + '">' + confLabel + '</span>' +
+        '<span class="part-name">' + esc(c.company_name || '未知公司') + '</span>' +
+        '<span class="score">置信度 <strong>' + conf + '</strong></span>' +
+      '</div>' +
+      '<div class="card-meta">' + country + bt + hasProduct + focus + '</div>' +
+      snippet +
+      '<div class="card-meta">' + website + email + phone + '</div>' +
+      '<div class="card-actions">' + emailBtn + previewBtn + '</div>' +
+      '<div class="preview-section" id="' + previewId + '"></div>' +
+      '<div class="url-link"><a href="' + escAttr(c.source_url) + '" target="_blank" rel="noopener">' + esc(urlShort) + '</a></div>' +
+    '</div>';
+  }).join('');
+}
+
+function copyDraft(btn, text) {
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = '已复制'; btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    btn.textContent = '已复制'; btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatTs(iso) {
+  try {
+    var d = new Date(iso);
+    return d.toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  } catch(e) { return iso; }
+}
+
+loadData();
+</script>
+
+</body>
+</html>
